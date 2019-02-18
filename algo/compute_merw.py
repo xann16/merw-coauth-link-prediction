@@ -1,10 +1,11 @@
 import numpy as num
 import scipy.linalg as alg
+# Operacje grafowe - może wydzielić ?
 
 
 def to_adiacency_row(neighbours, n):
     row = num.zeros(n)
-    row[neighbours]=1
+    row[neighbours] = 1
     return row
 
 
@@ -19,7 +20,7 @@ def dfs(graph, v, visited):
             dfs(graph, w, visited)
 
 
-def extract_connected_component(graph, vertex):
+def extract_connected_component(graph, vertex):  # Być może zbędna funkcja
     n = len(graph)
     member = [0 for v in graph]
     member[vertex] = 1
@@ -53,22 +54,23 @@ def get_all_components(graph):
         while vertex < n and member[vertex] > 0:
             vertex += 1
     components = []
-    for comp in range(1, comp_id):
-        number = [0 for v in graph]
-        offset = 0
-        j = 0
-        components.append([])
-        for i in range(n):
-            if member[i] == comp:
-                number[i] = i + offset
-                components[comp-1].append(graph[i])
-            else:
-                number[i] = -1
-                offset -= 1
-        for v in components[comp-1]:
+    number = [0 for v in graph]
+    index = [0 for c in range(1, comp_id)]
+    for i in range(n):
+        comp = member[i]-1
+        if index[comp] == 0:
+            components.append([graph[i]])
+        else:
+            components[comp].append(graph[i])
+        number[i] = index[comp]
+        index[comp] += 1
+    for component in components:
+        for v in component:
             for i in range(len(v)):
                 v[i] = number[v[i]]
     return components
+
+# Obliczanie MERW i SimRanków
 
 
 def compute_merw(A: num.array):
