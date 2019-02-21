@@ -1,5 +1,7 @@
 import numpy as num
-import scipy.linalg as alg
+import scipy.sparse.linalg as alg
+import scipy.linalg as algnorm
+import scipy.sparse as smat
 # Operacje grafowe - może wydzielić ?
 
 
@@ -9,8 +11,19 @@ def to_adiacency_row(neighbours, n):
     return row
 
 
-def graph_to_matrix(graph):
-    return num.array([to_adiacency_row(vertex, len(graph)) for vertex in graph])
+def graph_to_matrix(graph):  # Tworzy macierz rzadką opisująca graf
+    n = len(graph)
+    rows = []
+    cols = []
+    for i in range(n):
+        rows.extend([i]*len(graph[i]))
+        cols.extend(graph[i])
+    data = [1.0 for v in rows]
+    matrix = smat.csr_matrix((data, (rows, cols)), (n, n), 'd')
+    # for i in range(n):
+    #    matrix[i, graph[i]] = 1
+    return matrix
+    # return num.array([to_adiacency_row(vertex, len(graph)) for vertex in graph])
 
 
 def dfs(graph, v, visited):
@@ -73,20 +86,22 @@ def get_all_components(graph):
 # Obliczanie MERW i SimRanków
 
 
-def compute_merw(A: num.array):
-    w, v = alg.eig(A)
+def compute_merw(A, k=10):
+    n, m = A.get_shape()
+    k = min(k, n-1)
+    w, v = alg.eigsh(A, k)  # Macierz jest symetryczna
     maxeigi = 0
     for i in range(1, len(w)):
         if w[maxeigi] < w[i]:
             maxeigi = i
     evalue = w[maxeigi]
     evector = v[:, maxeigi]
-    n, m = A.shape
-    P = num.zeros(A.shape)
+    P = smat.lil_matrix((n, n))
     for row in range(n):
         denom = evalue * evector[row]
         for col in range(n):
-            P[row][col] = A[row][col] * evector[col] / denom
+            if A[row, col] != 0:
+                P[row, col] = A[row, col] * evector[col] / denom
     return P, evector, evalue, [evector[i]*evector[i] for i in range(n)]
 
 
@@ -101,15 +116,15 @@ def compute_merw_simrank(graph, alpha, precision=1e-5, maxiter=100):
         for y in range(n):
             for x in range(n):
                 if x == y:
-                    S[x][y] = 1.0
+                    S[x, y] = 1.0
                 elif denom[x][y] != 0:   # To mmoże nie zachodzić, jeśli graf nie jest spójny
                     for a in graph[x]:
                         for b in graph[y]:
-                            S[x][y] += R[a][b] / denom[a][b]
-                    S[x][y] *= alpha * denom[x][y]
+                            S[x, y] += R[a, b] / denom[a][b]
+                    S[x, y] *= alpha * denom[x][y]
                 else:
-                    S[x][y] = 0.0
-        eps = alg.norm(R - S)
+                    S[x, y] = 0.0
+        eps = algnorm.norm(R - S)
         if eps < precision:
             return R, eps
         R = S
@@ -124,13 +139,13 @@ def compute_basic_simrank(graph, alpha, precision=1e-5, maxiter=100):
         for y in range(n):
             for x in range(n):
                 if x == y:
-                    S[x][y] = 1.0
+                    S[x, y] = 1.0
                 else:
                     for a in graph[x]:
                         for b in graph[y]:
-                            S[x][y] += R[a][b]
-                    S[x][y] *= alpha / len(graph[x]) / len(graph[y])
-        eps = alg.norm(R - S)
+                            S[x, y] += R[a, b]
+                    S[x, y] *= alpha / len(graph[x]) / len(graph[y])
+        eps = algnorm.norm(R - S)
         if eps < precision:
             return R, eps
         R = S

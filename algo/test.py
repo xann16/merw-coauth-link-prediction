@@ -1,20 +1,25 @@
 import compute_merw as merw
+import scipy.sparse as sparse
 import numpy as num
 
 
 def print_similarity_matrix(S):
-    for row in S:
+    if not sparse.issparse(S):
+        S = sparse.csr_matrix(S)
+    n, m = S.get_shape()
+    for row in range(n):
         print('[', end='')
-        for value in row:
-            print('{:6.3f} '.format(value), end='')
+        for col in range(m):
+            print('{:6.3f} '.format(S[row, col]), end='')
         print(']')
 
 
 def print_adiacency_matrix(A):
-    for row in A:
+    n, m = A.get_shape()
+    for row in range(n):
         print('[', end='')
-        for val in row:
-            if val == 1:
+        for col in range(m):
+            if A[row, col] == 1:
                 print('X ', end='')
             else:
                 print('. ', end='')
