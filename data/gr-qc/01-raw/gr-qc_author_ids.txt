@@ -17907,7 +17907,7 @@
 17904;A. Rocchia
 17905;E. Deleeuw
 17906;P. Ojeda-May
-17907;; Jerome Perez
+17907;Jerome Perez
 17908;J. H. Romie
 17909;J. A. Crespo
 17910;Anirvan DasGupta
@@ -36267,7 +36267,6 @@
 36264;Zvonimir Vlah
 36265;V. I. Kudin
 36266;Ya-Bo Wu
-36267;Jerome Perez
 36268;Sarah J. Vigeland
 36269;S. Márka
 36270;Jay Hubisz

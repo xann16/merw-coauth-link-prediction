@@ -167,5 +167,3 @@ if __name__ == '__main__':
         print('Download data from arXiv category \"{}\".'.format(category))
         get_arxiv_data(category, year)
         print('Data successfully downloaded and saved.')
-
-# 2013, 2015, 2016
