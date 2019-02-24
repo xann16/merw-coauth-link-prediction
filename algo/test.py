@@ -63,16 +63,20 @@ def test_pdistance(graph):
     print(' Dokładność:', eps)
 
 
+
 def test_pdistance_alpha(graph):
     A = merw.graph_to_matrix(graph)
     Pgrw, vekt = merw.compute_grw(A)
     for a in [0.1, 0.2, 0.3, 0.4, 0.5 ,0.6, 0.7, 0.8, 0.9, 0.999]:
         print("\nP-distance GRW: Alpha=", a)
-        R, eps = merw.compute_P_distance(Pgrw, alpha=a, precision=1e-10)
+        R = merw.compute_P_distance(Pgrw, alpha=a)
         diag = sparse.linalg.inv(sparse.diags([R.diagonal()], [0], format='csc'))
         # każdy wiersz "normujemy" do wyrazu na przekątnej
         print_similarity_matrix(diag * R)
-        print(' Dokładność:', eps)
+        #print(' Dokładność:', eps)
+        #R = merw.compute_P_distance_exact(Pgrw, alpha=a)
+        #diag = sparse.linalg.inv(sparse.diags([R.diagonal()], [0], format='csc'))
+        #print_similarity_matrix(diag * R)
 
 
 if __name__ == '__main__':  # Odrobina testów

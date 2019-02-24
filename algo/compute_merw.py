@@ -201,7 +201,7 @@ def compute_merw_simrank_ofmatrix(matrix, alpha, precision=1e-5, maxiter=100):
     return R, eps
 
 
-def compute_P_distance(P, alpha=0.8, maxiter=100, precision=1e-6):
+def compute_P_distance_iterative(P, alpha=0.8, maxiter=100, precision=1e-6):  # Archaiczna i niedokładna
     if alpha <=0 or alpha>1:
         raise ValueError()
     D = powr = P*alpha
@@ -214,3 +214,8 @@ def compute_P_distance(P, alpha=0.8, maxiter=100, precision=1e-6):
             return result, eps
     return result, eps
 
+
+def compute_P_distance(P, alpha=0.8):
+    D = smat.identity(P.get_shape()[0], format='csr')
+    D -= P * alpha
+    return alg.inv(D)
