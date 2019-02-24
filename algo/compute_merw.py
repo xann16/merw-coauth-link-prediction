@@ -26,6 +26,19 @@ def graph_to_matrix(graph):  # Tworzy macierz rzadką opisująca graf
     # return num.array([to_adiacency_row(vertex, len(graph)) for vertex in graph])
 
 
+def matrix_to_graph(A):
+    rows, cols = A.nonzero()
+    graph = []
+    maxrow = -1
+    for (row, col) in zip(rows, cols):
+        if row > maxrow:
+            graph.append([col])
+            maxrow = row
+        else:
+            graph[row].append([col])
+    return graph
+
+
 def dfs(graph, v, visited):
     for w in graph[v]:
         if visited[w] == 0:
@@ -87,7 +100,7 @@ def get_all_components(graph):
 
 
 def compute_merw(A, k=10):
-    n, m = A.get_shape()
+    n = A.get_shape()[0]
     k = min(k, n-1)
     w, v = alg.eigsh(A, k)  # Macierz jest symetryczna
     maxeigi = 0
@@ -103,6 +116,15 @@ def compute_merw(A, k=10):
             if A[row, col] != 0:
                 P[row, col] = A[row, col] * evector[col] / denom
     return P, evector, evalue, [evector[i]*evector[i] for i in range(n)]
+
+
+def compute_grw(A):  # Wyznacza rozkład prawdopodobieństwa i rozkład stacjonarny dla zwykłego błądzenia
+    n = A.get_shape()[0]
+    degrees = smat.diags(A.sum(axis=0), [0], shape=(n, n), format='csr').power(-1)
+    P = degrees * A
+    vals, stationary = alg.eigs(P.transpose(), k=1, sigma=0.9999999)
+    inorm = 1/num.sum(stationary[:, 0]).real
+    return P, [x.real * inorm for x in stationary[:, 0]]
 
 
 def compute_merw_simrank(graph, alpha, precision=1e-5, maxiter=100):
@@ -150,4 +172,45 @@ def compute_basic_simrank(graph, alpha, precision=1e-5, maxiter=100):
             return R, eps
         R = S
     return R, eps
+
+
+def compute_merw_simrank_ofmatrix(matrix, alpha, precision=1e-5, maxiter=100):
+    graph = matrix_to_graph(matrix)
+    n = len(graph)
+    P, v, val, sdist = compute_merw(matrix)
+    R = num.identity(n)
+    denom = [[v[x]*v[y] for x in range(n)] for y in range(n)]
+    alpha = alpha / val / val
+    for iteration in range(maxiter):
+        S = num.zeros((n, n))
+        for y in range(n):
+            for x in range(n):
+                if x == y:
+                    S[x, y] = 1.0
+                elif denom[x][y] != 0:   # To mmoże nie zachodzić, jeśli graf nie jest spójny
+                    for a in graph[x]:
+                        for b in graph[y]:
+                            S[x, y] += R[a, b] / denom[a][b]
+                    S[x, y] *= alpha * denom[x][y]
+                else:
+                    S[x, y] = 0.0
+        eps = algnorm.norm(R - S)
+        if eps < precision:
+            return R, eps
+        R = S
+    return R, eps
+
+
+def compute_P_distance(P, alpha=0.8, maxiter=100, precision=1e-6):
+    if alpha <=0 or alpha>1:
+        raise ValueError()
+    D = powr = P*alpha
+    result = smat.identity(P.get_shape()[0], format='csr') + D
+    for i in range(maxiter):
+        powr *= D
+        result = result + powr
+        eps = alg.norm(powr)
+        if eps < precision:
+            return result, eps
+    return result, eps
 

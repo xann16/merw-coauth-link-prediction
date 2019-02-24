@@ -42,6 +42,37 @@ def unit_test(graph):
     P, val, vekt, dist = merw.compute_merw(A)
     print('Rozkład stacjonarny: ', dist)
     print_similarity_matrix(P)
+    print('Samo GRW')
+    P, dist = merw.compute_grw(A)
+    print('Rozkład stacjonarny: ', dist)
+    print_similarity_matrix(P)
+
+
+def test_pdistance(graph):
+    A = merw.graph_to_matrix(graph)
+    Pgrw, vekt = merw.compute_grw(A)
+    # print(vekt * Pgrw)
+    Pmerw, val, vekt, dist = merw.compute_merw(A)
+    R, eps = merw.compute_P_distance(Pgrw)
+    print("\nP-distance GRW")
+    print_similarity_matrix(R)
+    print(' Dokładność:', eps)
+    R, eps = merw.compute_P_distance(Pmerw)
+    print("P-distance MERW")
+    print_similarity_matrix(R)
+    print(' Dokładność:', eps)
+
+
+def test_pdistance_alpha(graph):
+    A = merw.graph_to_matrix(graph)
+    Pgrw, vekt = merw.compute_grw(A)
+    for a in [0.1, 0.2, 0.3, 0.4, 0.5 ,0.6, 0.7, 0.8, 0.9, 0.999]:
+        print("\nP-distance GRW: Alpha=", a)
+        R, eps = merw.compute_P_distance(Pgrw, alpha=a, precision=1e-10)
+        diag = sparse.linalg.inv(sparse.diags([R.diagonal()], [0], format='csc'))
+        # każdy wiersz "normujemy" do wyrazu na przekątnej
+        print_similarity_matrix(diag * R)
+        print(' Dokładność:', eps)
 
 
 if __name__ == '__main__':  # Odrobina testów
@@ -57,5 +88,6 @@ if __name__ == '__main__':  # Odrobina testów
     #      --- 0 ---            9 - 10
     #
     unit_test(graph1)
-    for g in merw.get_all_components(graph2):
-        unit_test(g)
+    # for g in merw.get_all_components(graph2):
+    #    unit_test(g)
+    test_pdistance_alpha(graph1)
