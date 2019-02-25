@@ -1,4 +1,5 @@
-edge-data/
+datasets/.arxiv-cache
+datasets/gr-qc
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

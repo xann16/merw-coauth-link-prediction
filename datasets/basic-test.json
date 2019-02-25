@@ -1,0 +1,29 @@
+{
+    "category": "gr-qc",
+    "datasets":
+    [
+        {
+            "name": "basic-test",
+            "period":
+            {
+                "from": "1998-07-01T00:00:00Z",
+                "to": "2000-01-01T00:00:00Z"
+            },
+            "split_method": "random",
+            "test_perc": 10,
+            "series_count": 10
+        },
+        {
+            "name": "basic-test-bis",
+            "period":
+            {
+                "from": "1996-07-01T00:00:00Z",
+                "to": "1997-03-01T00:00:00Z"
+            },
+            "split_method": "random",
+            "test_perc": 10,
+            "series_count": 1
+        }
+
+    ]
+}

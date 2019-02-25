@@ -1,0 +1,56 @@
+UPROSZCZONA INSTRUKCJA TWORZENIA ZBIORÓW DANYCH:
+
+[1] Przygotowanie pliku konfiguracyjnego:
+     - plik konfigurujący tworzenie ma format JSON, jego nazwa nie jest istotna,
+        zob. przykładowy plik: "datasets/basic-test.json"
+     - zawiera on dwa pola obowiązkowe: 'category' (string z nazwą kategorii
+        artykułów używanych przez arXiv) oraz 'datasets' (tablica obiektów, na
+        podstawie których utworzone zostaną datasety)
+     - każdy obiekt opisujący zbiór danych ma nastepujące pola:
+        -> 'name' (string, obowiązkowe) - nazwa zbioru, po której później
+            będzimy go identyfikować
+        -> 'period' (obowiązkowe) - jest to obiekt zawierający dwa pols - 'from'
+            oraz 'to' - zawierające daty w formacie używanym przez arXiv
+            (yyyy-MM-ddThh:mm:ssZ), które określają przedział czasu z jakiego
+            artykuły będą branę pod uwagę
+        -> 'split_method' (string, obowiązkowe) - identyfikator metody dzielenia
+            danych na zbiór treningowy i testowy (na chwilę obecną tylko
+            'random', potem dojzie dzielenie wg porządku chronologicznego)
+        -> 'test_perc' (number, obowiązkowe dla 'random') - określia jaki
+            procent danych znajdzie sie w zbiorzę testowym
+        -> 'series_count' (number, nieobow., default=1) - ile zbiorów danych
+            (o tej samej nazwie, indeksowanych) ma zostać utworzone z tak
+            określonych danych
+        -> 'disable' (bool, nieobow., default=false) - czy zbiór jest pomijany
+            przy generowaniu
+        -> 'disable_overwrite' (bool, nieobow., default=true) - jeśli zbiór
+            o podanej nazwie juz istnieje, to nie jest on tworzony od nowa
+        -> 'disable_maxcc_extraction' (bool, nieobow., default=false) - wyłącza
+            branie pod uwagę jedynie maksymalnej skaładowej spójnej otrzymanego
+            grafu przy tworzeniu ostatecznego zbioru
+
+[2] Uruchomienie generatora:
+     - będąc w katalogu 'datasets' (tj. jako working directory) uruchomić:
+          >>> ./dsgen.sh <nazwa-pliku-konfiguracyjnego>
+       (rozszerzenie '.json' może być pominięte)
+
+[3] Działanie generatora:
+     - na poczatku koniecznie jest ściągnięcie danych z arXiv.qrg, co może
+        chwilę potrwać (postęp jest wyświetlany w konsoli); pobrane informacje
+        o artykułach są cache'owane w paczkach zawierających dane dla
+        poszczególnych lat (w 'datasets/.arxiv-cache') i tylko dla tych lat,
+        które są potrzebne; przy kolejnych użyciach dane są wyciągane z cache'a
+        co odbywa się prawie natychmiastowo
+     - następnie tworzone są kolejno zdefiniowane zbiory - pliki znajdują się
+        w katalogu 'datasets/<nazwa-kategorii>/<nazwa-datasetu>/' i zawierają
+        mały plik JSON z metadanymi oraz listy krawędzi w formacie CSV (każda
+        krawędź w nowej linii, indeksy wierzchołków oddzielone tabulatorem)
+
+[4] Używanie datasetów:
+     - zrobiłem w 'algo/dataset.py' zaczątek prostej klasy, która w zamyśle ma
+        ułatwiac dostęp do danych wygenerowanych w ramach powyższego procesu
+        (do bieżącej modyfikacji wg potrzeb); idea jest taka, że przy jego
+        tworzeniu wystarczy podać katalog bazowy (tu: 'datasets/'), kategorię
+        oraz nazwę datasetu (tj.: 'name'), a on sobie wczyta ew. potrzebne
+        informacje z JSONa z metadanymi i udostępnia wygodne ładowanie danych
+        z plików

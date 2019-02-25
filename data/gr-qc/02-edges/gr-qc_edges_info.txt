@@ -1,3 +1,0 @@
-Total edges processed: 41395124
-Approx. size on disk: 1.6 GB
-Command(from wd: ./tools): "python3 parse_edges.py gr-qc ../data/gr-qc/01-raw/ ../data/gr-qc/02-edges/""
