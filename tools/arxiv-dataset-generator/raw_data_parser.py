@@ -23,6 +23,7 @@ def update_author_ids(author_ids, curr_auth_id, authors):
     ids = []
     new_auth_ids = 0
     for author in authors:
+        author = util.process_author_name(author)
         if author not in author_ids:
             author_ids[author] = curr_auth_id
             curr_auth_id += 1

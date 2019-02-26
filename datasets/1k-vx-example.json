@@ -1,0 +1,17 @@
+{
+    "category": "gr-qc",
+    "datasets":
+    [
+        {
+            "name": "eg1k",
+            "period":
+            {
+                "from": "1993-01-01T00:00:00Z",
+                "to": "1996-08-06T00:00:00Z"
+            },
+            "split_method": "random",
+            "test_perc": 10,
+            "series_count": 10
+        }
+    ]
+}

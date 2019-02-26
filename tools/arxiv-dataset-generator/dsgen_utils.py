@@ -68,3 +68,14 @@ def write_to_json(data, filepath):
 def load_from_json(filepath):
     with open(filepath, 'r', encoding='utf-8') as file:
         return json.load(file)
+
+def process_author_name(name, disable=False):
+    if disable:
+        return name
+    res = ''
+    tokens = name.split(' ')
+    for token in tokens[:-1]:
+        res += token[0]
+        res += '.'
+    res += tokens[-1]
+    return res

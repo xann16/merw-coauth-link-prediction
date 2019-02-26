@@ -1,0 +1,17 @@
+{
+    "category": "gr-qc",
+    "datasets":
+    [
+        {
+            "name": "standard",
+            "period":
+            {
+                "from": "1992-04-01T00:00:00Z",
+                "to": "2002-04-01T00:00:00Z"
+            },
+            "split_method": "random",
+            "test_perc": 10,
+            "series_count": 10
+        }
+    ]
+}

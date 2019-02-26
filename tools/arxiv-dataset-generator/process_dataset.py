@@ -48,25 +48,35 @@ SPLIT_METHOD_FUNCS = {"random":
 
 
 def process_dataset(category, settings, base_path):
-    if not settings["disable"]:
-        cache_path = path.join(base_path, '.arxiv-cache', category)
-        output_path = path.join(base_path, category, settings["name"])
-        t_from, t_to = util.parse_period(settings["period"])
+    if settings["disable"]:
+        print('Processing dataset "{}" skipped.'.format(settings["name"]))
+        return
 
-        arxiv.update_cache(category, cache_path, t_from, t_to)
+    cache_path = path.join(base_path, '.arxiv-cache', category)
+    output_path = path.join(base_path, category, settings["name"])
+    t_from, t_to = util.parse_period(settings["period"])
 
+    if settings["disable_overwrite"] and path.exists(output_path):
+        print('Processing dataset "{}" skipped (already exists)'
+              .format(settings["name"]))
+        return
+
+    arxiv.update_cache(category, cache_path, t_from, t_to)
+
+    vx_count, edge_count, edges = \
+        SPLIT_METHOD_FUNCS[settings["split_method"]][0](category,
+                                                        cache_path,
+                                                        t_from,
+                                                        t_to)
+
+    if not settings["disable_maxcc_extraction"]:
+        print("Extracting mcc from main graph ({} vertices)."
+              .format(vx_count))
         vx_count, edge_count, edges = \
-            SPLIT_METHOD_FUNCS[settings["split_method"]][0](category,
-                                                            cache_path,
-                                                            t_from,
-                                                            t_to)
+            preproc.extract_maximal_connected_component(vx_count, edges)
 
-        if not settings["disable_maxcc_extraction"]:
-            vx_count, edge_count, edges = \
-                preproc.extract_maximal_connected_component(vx_count, edges)
-
-        SPLIT_METHOD_FUNCS[settings["split_method"]][1](edges,
-                                                        settings,
-                                                        vx_count,
-                                                        edge_count,
-                                                        output_path)
+    SPLIT_METHOD_FUNCS[settings["split_method"]][1](edges,
+                                                    settings,
+                                                    vx_count,
+                                                    edge_count,
+                                                    output_path)

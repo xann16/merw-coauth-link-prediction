@@ -34,7 +34,7 @@ def update_yearly_data(category, year, filepath):
             if offset + chunk_size > total:
                 chunk_size = total - offset
             data = fetch_data_chunk(category, year, offset, chunk_size)
-            parse_data_chunk(articles, data)
+            parse_data_chunk(category, articles, data)
             wait()
         util.write_to_json(articles, filepath)
         print('Raw data for {}:{}. Cache updated ({} of {} articles).'
@@ -96,11 +96,12 @@ def fetch_data_chunk(category, year, offset, count):
     return entries
 
 
-def parse_data_chunk(articles, entries):
+def parse_data_chunk(category, articles, entries):
     for elem in entries:
         title = elem.find('{http://www.w3.org/2005/Atom}title').text
         title = title.replace(";", "").strip()
         publ_date = elem.find('{http://www.w3.org/2005/Atom}published').text
+        is_primary_cat = is_primary_category(category, elem)
         authors = []
         for auth_elem in elem.findall('{http://www.w3.org/2005/Atom}author'):
             author = auth_elem.find('{http://www.w3.org/2005/Atom}name').text
@@ -109,5 +110,16 @@ def parse_data_chunk(articles, entries):
                 authors.append(author)
         article = {"title": title,
                    "published": publ_date,
+                   "is_primary_category": is_primary_cat,
                    "authors": authors}
         articles.append(article)
+
+
+def is_primary_category(category, item):
+    pcat = item.find('{http://arxiv.org/schemas/atom}primary_category')
+    if pcat is None:
+        return False
+    term = pcat.get('term')
+    if term is None or term != category:
+        return False
+    return True

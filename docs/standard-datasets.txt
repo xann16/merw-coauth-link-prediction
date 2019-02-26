@@ -1,0 +1,12 @@
+STANDARD ARXIV-BASED DATASETS FROM LITERATURE:
+
+[1] STANDARD GR-QC
+    - arxiv category:      gr-qc
+    - timespan:            APR 1992 - MAR 2002 (120 months total)
+    - settings file:       datasets/gr-qc-std.json (name: "standard")
+    - initial source:      http://www.cs.cmu.edu/~jure/pubs/powergrowth-tkdd.pdf
+    - graph statistics -
+        - vertices:         5242
+        - edges:           14496
+        - vertices in mcc:  4158
+        - edges in mcc:    13428
