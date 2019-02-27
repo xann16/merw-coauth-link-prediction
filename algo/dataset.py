@@ -3,6 +3,11 @@ from os import path
 from scipy.sparse import lil_matrix
 
 
+def __get_filepath(base_path, name, ds_index, ds_type_string):
+    fname = '{:03}_{}.{}.csv'.format(ds_index, name, ds_type_string)
+    return path.join(base_path, fname)
+
+
 def __get_basic_edge_list(filepath):
     edges = []
     with open(filepath, 'r', encoding='utf-8') as file:
@@ -30,6 +35,45 @@ __MODE_EDGES_TO_OUTPUT = {'edge_list': __proj_2,
                           'adjacency_matrix_lil': __edge_list_to_sparse_lil}
 
 
+def __basic_load_training_set(base_path, name, ds_index, _, format_type):
+    filepath = __get_filepath(base_path, name, ds_index, 'train')
+    if format_type not in __FORMAT_TO_LOADER:
+        raise BaseException('Unsupported training set format type.')
+    return __FORMAT_TO_LOADER[format_type](filepath)
+
+
+def __basic_load_test_set(base_path, name, ds_index, _, format_type):
+    filepath = __get_filepath(base_path, name, ds_index, 'test')
+    if format_type not in __FORMAT_TO_LOADER:
+        raise BaseException('Unsupported training set format type.')
+    return __FORMAT_TO_LOADER[format_type](filepath)
+
+
+def __k_cross_load_training_set(base_path, name, ds_index, ds_count,
+                                format_type):
+    if format_type not in __FORMAT_TO_LOADER:
+        raise BaseException('Unsupported training set format type.')
+    edges = []
+    for i in range(1, ds_count + 1):
+        if i != ds_index:
+            filepath = __get_filepath(base_path, name, ds_index, 'train')
+            edges.append(__FORMAT_TO_LOADER[format_type](filepath))
+    return
+
+
+def __k_cross_load_test_set(base_path, name, ds_index, _, format_type):
+    filepath = __get_filepath(base_path, name, ds_index, 'cross')
+    if format_type not in __FORMAT_TO_LOADER:
+        raise BaseException('Unsupported training set format type.')
+    return __FORMAT_TO_LOADER[format_type](filepath)
+
+
+__SPLIT_METHOD_TO_LOADERS = {'random': (__basic_load_training_set,
+                                        __basic_load_test_set),
+                             'k-cross-random': (__k_cross_load_training_set,
+                                                __k_cross_load_test_set)}
+
+
 class DataSet:
 
     name = ""
@@ -41,6 +85,7 @@ class DataSet:
     is_maxcc = False
     set_count = 0
     format_type = ""
+    split_method = ""
 
     def __init__(self, base_path, category, ds_name):
         full_path = path.join(base_path, category, ds_name)
@@ -55,11 +100,8 @@ class DataSet:
         self.test_size = md["test_sets_size"]
         self.is_maxcc = md["is_maxcc"]
         self.format_type = md["format_type"]
+        self.split_method = md["split_method"]
         self.set_count = md["set_count"]
-
-    def __get_filepath(self, ds_index, ds_type_string):
-        fname = '{:03}_{}.{}.csv'.format(ds_index, self.name, ds_type_string)
-        return path.join(self.base_path, fname)
 
     def __throw_if_index_oob(self, ds_index):
         if ds_index < 1 or ds_index > self.set_count:
@@ -69,10 +111,14 @@ class DataSet:
 
     def get_training_set(self, ds_index=1, mode='edge_list'):
         self.__throw_if_index_oob(ds_index)
-        filepath = self.__get_filepath(ds_index, 'train')
-        if self.format_type not in __FORMAT_TO_LOADER:
-            raise BaseException('Unsupported training set format type.')
-        edges = __FORMAT_TO_LOADER[self.format_type](filepath)
+        if self.split_method not in __SPLIT_METHOD_TO_LOADERS:
+            raise BaseException('Unsupported dataset split type.')
+        edges = \
+            __SPLIT_METHOD_TO_LOADERS[self.split_method][0](self.base_path,
+                                                            self.name,
+                                                            ds_index,
+                                                            self.set_count,
+                                                            self.format_type)
 
         if mode not in __MODE_EDGES_TO_OUTPUT:
             raise BaseException('Unsupported training set output mode.')
@@ -80,10 +126,14 @@ class DataSet:
 
     def get_test_edges(self, ds_index=1):
         self.__throw_if_index_oob(ds_index)
-        filepath = self.__get_filepath(ds_index, 'test')
-        if self.format_type not in __FORMAT_TO_LOADER:
-            raise BaseException('Unsupported training set format type.')
-        return __FORMAT_TO_LOADER[self.format_type](filepath)
+        if self.split_method not in __SPLIT_METHOD_TO_LOADERS:
+            raise BaseException('Unsupported dataset split type.')
+        return \
+            __SPLIT_METHOD_TO_LOADERS[self.split_method][1](self.base_path,
+                                                            self.name,
+                                                            ds_index,
+                                                            self.set_count,
+                                                            self.format_type)
 
     def get_dataset(self, ds_index=1, ts_mode='edge_list'):
         self.__throw_if_index_oob(ds_index)

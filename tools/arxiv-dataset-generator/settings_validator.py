@@ -20,11 +20,6 @@ def validate_dataset_entry(entry):
     validate_split_method(entry)
     validate_period_field(entry, "JSON settings dataset entry")
 
-    if "series_count" not in entry:
-        entry["series_count"] = 1
-    else:
-        int(entry["series_count"])
-
     if "disable" not in entry:
         entry["disable"] = False
     else:
@@ -47,8 +42,23 @@ def validate_random_split(entry):
                             "'test_perc' parameter field for 'random' " +
                             "split method.")
 
+    if "series_count" not in entry:
+        entry["series_count"] = 1
+    else:
+        int(entry["series_count"])
 
-SPLIT_METHOD_VALIDATORS = {"random": validate_random_split}
+
+def validate_k_cross_random_split(entry):
+    if "k_subset_count" not in entry:
+        entry["k_subset_count"] = 10
+    else:
+        k = int(entry["k_subset_count"])
+        if k < 2:
+            k = 2
+
+
+SPLIT_METHOD_VALIDATORS = {"random": validate_random_split,
+                           "k-cross-random": validate_k_cross_random_split}
 
 
 def validate_split_method(entry):

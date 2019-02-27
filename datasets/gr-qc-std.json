@@ -9,9 +9,9 @@
                 "from": "1992-04-01T00:00:00Z",
                 "to": "2002-04-01T00:00:00Z"
             },
-            "split_method": "random",
-            "test_perc": 10,
-            "series_count": 10
+            "split_method": "k-cross-random",
+            "k_subset_count": 10,
+            "series_count": 1
         }
     ]
 }

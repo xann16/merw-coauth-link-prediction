@@ -1,6 +1,5 @@
 import random
 from os import path
-from datetime import datetime
 import arxiv_api_client as arxiv
 import raw_data_parser as parser
 import graph_preproc as preproc
@@ -31,6 +30,7 @@ def prepare_random_datesets(edges, settings, vx_count, edge_count, base_path):
                 "edges": edge_count,
                 "set_count": ds_count,
                 "format_type": "basic_edge_list",
+                "split_method": settings["split_method"],
                 "is_maxcc": not settings["disable_maxcc_extraction"],
                 "training_sets_size": edge_count - test_edges_count,
                 "test_sets_size": test_edges_count,
@@ -43,8 +43,46 @@ def prepare_random_datesets(edges, settings, vx_count, edge_count, base_path):
     print('For details, see: {}'.format(meta_path))
 
 
+def prepare_k_cross_random_datesets(edges, settings, vx_count, edge_count,
+                                    base_path):
+    ds_name = settings["name"]
+    k = settings["k_subset_count"]
+    k_frac = 1 / k
+    k_size = 0
+
+    print("Here!")
+
+    random.shuffle(edges)
+    for i in range(1, k + 1):
+        full_path = path.join(base_path, '{:03}_{}.cross.csv'
+                                         .format(i, ds_name))
+        start = int(((i - 1) * k_frac) * edge_count)
+        end = int((i * k_frac) * edge_count)
+        k_size = end - start
+        util.write_edges_to_file(edges[start:end], full_path)
+
+    metadata = {"name": ds_name,
+                "vertices": vx_count,
+                "edges": edge_count,
+                "set_count": k,
+                "format_type": "basic_edge_list",
+                "split_method": settings["split_method"],
+                "is_maxcc": not settings["disable_maxcc_extraction"],
+                "training_sets_size": k_size * (k - 1),
+                "test_sets_size": k_size,
+                "created": util.now_as_string()}
+    meta_path = path.join(base_path, '{}_meta.json'.format(ds_name))
+    util.write_to_json(metadata, meta_path)
+
+    print('Data files for "{}" dataset succesfully created '.format(ds_name) +
+          '({} vertices, {} edges).'.format(vx_count, edge_count))
+    print('For details, see: {}'.format(meta_path))
+
+
 SPLIT_METHOD_FUNCS = {"random":
-                      (get_edges_for_random, prepare_random_datesets)}
+                      (get_edges_for_random, prepare_random_datesets),
+                      "k-cross-random":
+                      (get_edges_for_random, prepare_k_cross_random_datesets)}
 
 
 def process_dataset(category, settings, base_path):
