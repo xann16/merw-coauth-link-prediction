@@ -1,6 +1,7 @@
 import compute_merw as merw
 import scipy.sparse as sparse
-import numpy as num
+import metrics
+import dataset
 
 
 def print_similarity_matrix(S):
@@ -26,7 +27,7 @@ def print_adiacency_matrix(A):
         print(']')
 
 
-def unit_test(graph):
+def __unit_test(graph):
     A = merw.graph_to_matrix(graph)
     print('\n>>>> GRAF: ')
     print_adiacency_matrix(A)
@@ -48,7 +49,7 @@ def unit_test(graph):
     print_similarity_matrix(P)
 
 
-def test_pdistance(graph):
+def __test_pdistance(graph):
     A = merw.graph_to_matrix(graph)
     Pgrw, vekt = merw.compute_grw(A)
     # print(vekt * Pgrw)
@@ -63,8 +64,7 @@ def test_pdistance(graph):
     print(' Dokładność:', eps)
 
 
-
-def test_pdistance_alpha(graph):
+def __test_pdistance_alpha(graph):
     A = merw.graph_to_matrix(graph)
     Pgrw, vekt = merw.compute_grw(A)
     for a in [0.1, 0.2, 0.3, 0.4, 0.5 ,0.6, 0.7, 0.8, 0.9, 0.999]:
@@ -78,11 +78,10 @@ def test_pdistance_alpha(graph):
         #diag = sparse.linalg.inv(sparse.diags([R.diagonal()], [0], format='csc'))
         #print_similarity_matrix(diag * R)
 
-
-if __name__ == '__main__':  # Odrobina testów
+def __experiment_plain():
     graph1 = [[1, 2], [0, 2], [0, 1, 3, 4], [2, 4],
               [2, 3, 5], [4, 6], [5, 7, 8], [6, 8],
-              [6, 7, 9, 10], [8,10], [8,9]]
+              [6, 7, 9, 10], [8, 10], [8, 9]]
     # Tego nie chce mi się rysować.
     graph2 = [[1, 2, 3, 4, 5], [0, 2], [0, 1, 3], [0, 2, 4], [0, 3, 5], [0, 4],
               [7, 8, 9], [6], [6], [6, 10], [9]]
@@ -91,7 +90,34 @@ if __name__ == '__main__':  # Odrobina testów
     #    \  \  |  /  /          |
     #      --- 0 ---            9 - 10
     #
-    unit_test(graph1)
+    __unit_test(graph1)
     # for g in merw.get_all_components(graph2):
     #    unit_test(g)
-    test_pdistance_alpha(graph1)
+    __test_pdistance_alpha(graph1)
+
+
+def __experiment_01():
+    data = dataset.DataSet('../datasets/', 'gr-qc', 'basic-test')
+    matrix = sparse.csc_matrix(data.get_training_set(mode='adjacency_matrix_lil'), dtype='f')
+    training = data.get_training_set()
+    test = data.get_test_edges()
+    print('N=', data.vx_count)
+    print('Obliczanie macierzy przejścia MERW...')
+    Pmerw, v, val, sdist = merw.compute_merw(matrix)
+    print(Pmerw.get_shape()[0])
+    print('Obliczanie macierzy odległości...')
+    p_dist_merw = merw.compute_P_distance(Pmerw)
+    print('Skuteczność (AUC):', \
+          metrics.auc(data.vx_count, training, test, p_dist_merw, 500))
+
+    print('Obliczanie macierzy przejścia GRW...')
+    Pgrw, sd = merw.compute_grw(matrix)
+    print('Obliczanie macierzy odległości...')
+    p_dist_grw = merw.compute_P_distance(Pgrw)
+    print('Skuteczność (AUC):', \
+          metrics.auc(data.vx_count, training, test, p_dist_grw, 500))
+
+
+if __name__ == '__main__':  # Odrobina testów
+    #__experiment_plain()
+    __experiment_01()
