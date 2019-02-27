@@ -1,0 +1,12 @@
+{
+  "name": "small-cross",
+  "vertices": 5,
+  "edges": 7,
+  "set_count": 3,
+  "format_type": "basic_edge_list",
+  "split_method": "k-cross-random",
+  "is_maxcc": true,
+  "training_sets_size": 5,
+  "test_sets_size": 2,
+  "created": "2019-02-27T00:20:46Z"
+}
