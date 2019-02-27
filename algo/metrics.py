@@ -9,7 +9,7 @@ def pick_rnd_notrain(vx_count, train_edges):
     while True:
         i = min(int(random.uniform(0, vx_count)), vx_count - 1)
         j = min(int(random.uniform(0, vx_count)), vx_count - 1)
-        if (i, j) not in train_edges:
+        if i != j and (i, j) not in train_edges:
             return (i, j)
 
 
@@ -17,13 +17,7 @@ def get_score(scores, coords):
     return scores[coords[0], coords[1]]
 
 
-# Oblicza metrykę AUC
-# -> vx_count - ilość wierzchołków badanego grafu
-# -> train_edges - zbiór krawędzi zbioru treningowego
-# -> test_edges - zbiór krawędzi zbioru testowego
-# -> scores - macierz zawierająca oceny nadane krawędziom spoza zbioru tren.
-# -> samples - ilość próbek (metryka ma charakter probilistyczny)
-def auc(vx_count, train_edges, test_edges, scores, samples=1000000):
+def auc_prob(vx_count, train_edges, test_edges, scores, samples):
     score = 0
     for _ in range(0, samples):
         missing_score = get_score(scores, pick_rnd_missing(test_edges))
@@ -34,6 +28,38 @@ def auc(vx_count, train_edges, test_edges, scores, samples=1000000):
         elif missing_score == notrain_score:
             score += 0.5
     return score / samples
+
+
+def auc_total(vx_count, train_edges, test_edges, scores):
+    score = 0
+    samples = 0
+    for i in range(1, vx_count):
+        for j in range(i, vx_count):
+            if (i, j) in train_edges:
+                continue
+            notrain_score = scores[i, j]
+            for mi, mj in test_edges:
+                missing_score = scores[i, j]
+                if missing_score > notrain_score:
+                    score += 1
+                elif missing_score == notrain_score:
+                    score += 0.5
+                samples += 1
+    return score / samples
+
+
+# Oblicza metrykę AUC
+# -> vx_count - ilość wierzchołków badanego grafu
+# -> train_edges - zbiór krawędzi zbioru treningowego
+# -> test_edges - zbiór krawędzi zbioru testowego
+# -> scores - macierz zawierająca oceny nadane krawędziom spoza zbioru tren.
+# -> samples - ilość próbek (metryka ma charakter probilistyczny), lub dla
+#     wartości niedodatniej (dmyślnie) bierze pod uwagę wszystkie możliwe pary
+def auc(vx_count, train_edges, test_edges, scores, samples=0):
+    if samples < 1:
+        return auc_total(vx_count, train_edges, test_edges, scores)
+    else:
+        return auc_prob(vx_count, train_edges, test_edges, scores, samples)
 
 
 def find_min(l):
