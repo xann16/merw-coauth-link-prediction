@@ -56,7 +56,7 @@ def k_cross_load_training_set(base_path, name, ds_index, ds_count,
     edges = []
     for i in range(1, ds_count + 1):
         if i != ds_index:
-            filepath = get_filepath(base_path, name, ds_index, 'cross')
+            filepath = get_filepath(base_path, name, i, 'cross')
             edges += FORMAT_TO_LOADER[format_type](filepath)
     return edges
 
