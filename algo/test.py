@@ -104,16 +104,28 @@ def __experiment_plain():
     #__test_pdistance_alpha(graph1)
 
 
-def __experiment_01(data_set, skipSimRank=False, set_no=1, a=0.5, aucn=2000):
+def test_dataset_symmetry(data_set, set_no=1):
     data = dataset.DataSet('../datasets/', 'gr-qc', data_set)
     matrix = sparse.csc_matrix(
-        data.get_training_set(mode='adjacency_matrix_lil', ds_index=set_no), dtype='f')
+        data.get_training_set(mode='adjacency_matrix_lil', ds_index=set_no), dtype='d')
+    print('DATASET ', data_set)
+    for i in range(data.vx_count):
+        for j in range(i):
+            if matrix[i, j] != matrix[j, i]:
+                print("ERROR! ({},{})".format(i, j), end=' ')
+    print(' OK')
+
+
+def __experiment_01(data_set, skipSimRank=False, set_no=1, a=0.5, aucn=2000, simrank_iter=15):
+    data = dataset.DataSet('../datasets/', 'gr-qc', data_set)
+    matrix = sparse.csc_matrix(
+        data.get_training_set(mode='adjacency_matrix_lil', ds_index=set_no), dtype='d')
     training = metrics.get_edges_set(data.get_training_set())
     test = metrics.get_edges_set(data.get_test_edges())
 
     print('Zestaw',set_no,' N=', data.vx_count)
     print('Obliczanie: macierzy przejścia MERW...', end=' ')
-    Pmerw, vekt, eval, stat = merw.compute_merw_matrix(matrix, method=merw.power_method)
+    Pmerw, vekt, eval, stat = merw.compute_merw_matrix(matrix)
     #print(vekt)
     #print(Pmerw.get_shape()[0])
     print('macierzy "odległości"...')
@@ -132,15 +144,16 @@ def __experiment_01(data_set, skipSimRank=False, set_no=1, a=0.5, aucn=2000):
     graph = merw.matrix_to_graph(matrix)
     #print(graph)
     print('SimRank...')
-    sr, eps = merw.compute_basic_simrank(graph, a, maxiter=30)
-    print('Skuteczność (AUC 1000):',
-          metrics.auc(data.vx_count, training, test, sr, 1000),
-          ' Dokładność:', eps)
+    sr, eps = merw.compute_basic_simrank(graph, a, maxiter=simrank_iter)
+    print(' Dokładność:', eps)
+    print('Skuteczność (AUC {}):'.format(aucn),
+          metrics.auc(data.vx_count, training, test, sr, aucn))
+
     print('MERW SimRank...')
-    sr, eps = merw.compute_merw_simrank_ofmatrix(matrix, a, maxiter=30)
-    print('Skuteczność (AUC 1000):',
-          metrics.auc(data.vx_count, training, test, sr, 1000),
-          ' Dokładność:',eps)
+    sr, eps = merw.compute_merw_simrank_ofmatrix(matrix, a, maxiter=simrank_iter)
+    print(' Dokładność:', eps)
+    print('Skuteczność (AUC {}):'.format(aucn),
+          metrics.auc(data.vx_count, training, test, sr, aucn))
 
 
 def __test_mat_merw():
@@ -161,7 +174,9 @@ def __test_mat_merw():
 
 if __name__ == '__main__':  # Odrobina testów
     #__experiment_plain()
-    for i in range(1, 10):
-        __experiment_01('eg1k', skipSimRank=True, set_no=i)
+    #__experiment_01('basic-test-bis', aucn=5000)
+    #for i in range(1, 10):
+        #test_dataset_symmetry('basic-test', set_no=i)
+        #__experiment_01('basic-test', skipSimRank=True, set_no=i, aucn=5000)
     #__test_mat_merw()
-    #__experiment_01('basic-test')
+    __experiment_01('basic-test', aucn=7000)

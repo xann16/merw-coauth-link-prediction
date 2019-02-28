@@ -106,16 +106,11 @@ def get_all_components(graph):
 # Obliczanie MERW i SimRanków
 
 
-def compute_merw(A, k=10): # Archaiczne liczenie MERW
+def compute_merw(A): # Archaiczne liczenie MERW
     n = A.get_shape()[0]
-    k = min(k, n-1)
-    w, v = alg.eigsh(A, k)  # Macierz jest symetryczna
-    maxeigi = 0
-    for i in range(1, len(w)):
-        if w[maxeigi] < w[i]:
-            maxeigi = i
-    evalue = w[maxeigi]
-    evector = v[:, maxeigi]
+    w, v = alg.eigsh(A, 1, )  # Macierz jest symetryczna
+    evalue = w[0]
+    evector = v[:, 0]
     evector = evector / algnorm.norm(evector)
     P = smat.lil_matrix((n, n))
     for row in range(n):
@@ -126,7 +121,7 @@ def compute_merw(A, k=10): # Archaiczne liczenie MERW
     return P, evector, evalue, [evector[i]*evector[i] for i in range(n)]
 
 
-def __power_method0(A, precision=1e-11):
+def power_method(A, precision=1e-11):
     n = A.get_shape()[0]
     v0 = num.array([random.random()+.1 for i in range(n)])
     eps = 1
@@ -143,19 +138,7 @@ def __power_method0(A, precision=1e-11):
             eval = max(eval, div)
             eps += eval - div
         v0 = v1/eval
-    return v0/algnorm.norm(v0), eval
-
-
-def power_method(A):
-    v0, val0 = __power_method0(A)
-    v1, val1 = __power_method0(A)
-    #print(val0, ',', val1)
-    #print(v0)
-    #print(v1)
-    if val0 > val1:
-        return v0, val0
-    else:
-        return v1, val1
+    return v0/algnorm.norm(v0), eval, iter
 
 
 def scipy_method(A):
@@ -164,7 +147,7 @@ def scipy_method(A):
     evector = v[:, 0]
     if evector[0] < 0:
         evector *= -1
-    return evector / algnorm.norm(evector), evalue
+    return evector / algnorm.norm(evector), evalue, 1
 
 
 def _inv(x, y):
@@ -174,12 +157,13 @@ def _inv(x, y):
         return 0.0
 
 
-def compute_merw_matrix(A, k=1, method=scipy_method):
+def compute_merw_matrix(A, method=power_method):
     n = A.get_shape()[0]
-    evector, evalue = method(A)
-    print(min(evector))
+    evector, evalue, iter = method(A)
+    print('({} itr.)'.format(iter), end='')
     mat1 = smat.diags([evector], [0], shape=(n, n), format='csc')
-    mat2 = smat.diags([[_inv(v, evalue) for v in evector]], [0], shape=(n, n), format='csc')
+    mat2 = smat.diags([[_inv(v, evalue) for v in evector]],  # Coś jakby odwrotność macierzy diagonalnej
+                      [0], shape=(n, n), format='csc')
     return mat2*A*mat1, evector, evalue, [v*v for v in evector]
 
 
@@ -196,29 +180,29 @@ def compute_merw_simrank(graph, alpha, precision=1e-5, maxiter=100):
     n = len(graph)
     R = num.identity(n)
     P, v, val, sdist = compute_merw_matrix(graph_to_matrix(graph))
-    denom = [[v[x]*v[y] for x in range(n)] for y in range(n)]
+    R = num.identity(n)
+    S = num.zeros((n, n))
+    denom = [[v[x] * v[y] for x in range(n)] for y in range(n)]
     alpha = alpha / val / val
     for iteration in range(maxiter):
-        S = num.zeros((n, n))
+        # S.fill(0)  # S = num.zeros((n, n))
         for y in range(n):
-            for x in range(n):
-                if x == y:
-                    S[x, y] = 1.0
-                elif denom[x][y] != 0:   # To mmoże nie zachodzić, jeśli graf nie jest spójny
-                    for a in graph[x]:
-                        for b in graph[y]:
-                            S[x, y] += R[a, b] / denom[a][b]
-                    S[x, y] *= alpha * denom[x][y]
-                else:
-                    S[x, y] = 0.0
-        eps = algnorm.norm(R - S)
-        if eps < precision:
-            return R, eps
+            S[y, y] = 1.0
+            for x in range(y):
+                # if denom[x][y] != 0:   # To mmoże nie zachodzić, jeśli graf nie jest spójny
+                S[x, y] = 0.0
+                for a in graph[x]:
+                    for b in graph[y]:
+                        S[x, y] += R[a, b] / denom[a][b]
+                S[x, y] *= alpha * denom[x][y]
+                S[y, x] = S[x, y]
+        t = R
         R = S
-    return R, eps
+        S = t
+    return R, algnorm.norm(R - S)
 
 
-def compute_basic_simrank(graph, alpha, precision=1e-5, maxiter=100):
+def compute_basic_simrank(graph, alpha, precision=1e-5, maxiter=20):
     n = len(graph)
     R = num.identity(n)
     S = num.zeros((n, n))
@@ -232,23 +216,22 @@ def compute_basic_simrank(graph, alpha, precision=1e-5, maxiter=100):
                         S[x, y] += R[a, b]
                 S[x, y] *= alpha / (len(graph[x])*len(graph[y]))
                 S[y, x] = S[x, y]
-        #eps = algnorm.norm(R - S)
-        #if eps < precision:
-        #    return R, eps
+        t = R
         R = S
+        S = t
     return R, algnorm.norm(R - S)
 
 
-def compute_merw_simrank_ofmatrix(matrix, alpha, precision=1e-5, maxiter=100):
+def compute_merw_simrank_ofmatrix(matrix, alpha, precision=1e-5, maxiter=20, method=power_method):
     graph = matrix_to_graph(matrix)
     n = len(graph)
-    P, v, val, sdist = compute_merw_matrix(matrix)
+    P, v, val, sdist = compute_merw_matrix(matrix, method=method)
     R = num.identity(n)
     S = num.zeros((n, n))
     denom = [[v[x]*v[y] for x in range(n)] for y in range(n)]
     alpha = alpha / val / val
     for iteration in range(maxiter):
-        #S.fill(0)  #S = num.zeros((n, n))
+        #S.fill(0)  # S = num.zeros((n, n))
         for y in range(n):
             S[y, y] = 1.0
             for x in range(y):
@@ -259,12 +242,9 @@ def compute_merw_simrank_ofmatrix(matrix, alpha, precision=1e-5, maxiter=100):
                             S[x, y] += R[a, b] / denom[a][b]
                     S[x, y] *= alpha * denom[x][y]
                     S[y, x] = S[x, y]
-                #else:
-                #    S[x, y] = 0.0
-        #eps = algnorm.norm(R - S)
-        #if eps < precision:
-        #    return R, eps
+        t = R
         R = S
+        S = t
     return R, algnorm.norm(R - S)
 
 
