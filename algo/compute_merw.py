@@ -2,6 +2,7 @@ import numpy as num
 import scipy.sparse.linalg as alg
 import scipy.linalg as algnorm
 import scipy.sparse as smat
+import random
 # Operacje grafowe - może wydzielić ?
 
 
@@ -125,20 +126,61 @@ def compute_merw(A, k=10): # Archaiczne liczenie MERW
     return P, evector, evalue, [evector[i]*evector[i] for i in range(n)]
 
 
-def compute_merw_matrix(A, k=5):
+def __power_method0(A, precision=1e-11):
     n = A.get_shape()[0]
-    k = min(k, n - 1)
-    w, v = alg.eigsh(A, k)  # Macierz jest symetryczna
-    maxeigi = 0
-    for i in range(1, len(w)):
-        if w[maxeigi] < w[i]:
-            maxeigi = i
-    evalue = w[maxeigi]
-    evector = v[:, maxeigi]
-    evector = evector / algnorm.norm(evector)
-    mat1 = smat.diags([evector],[0], shape=(n, n), format='csc')
-    mat2 = alg.inv(mat1)
-    return mat2*A*mat1*(1/evalue), evector, evalue, [v*v for v in evector]
+    v0 = num.array([random.random()+.1 for i in range(n)])
+    eps = 1
+    iter = 0
+    while iter < 20 or eps > precision:
+        v1 = v0*A
+        iter += 1
+        eval = 0
+        eps = 0
+        for i in range(n):
+            if v0[i] == 0:
+                continue
+            div = v1[i]/v0[i]
+            eval = max(eval, div)
+            eps += eval - div
+        v0 = v1/eval
+    return v0/algnorm.norm(v0), eval
+
+
+def power_method(A):
+    v0, val0 = __power_method0(A)
+    v1, val1 = __power_method0(A)
+    #print(val0, ',', val1)
+    #print(v0)
+    #print(v1)
+    if val0 > val1:
+        return v0, val0
+    else:
+        return v1, val1
+
+
+def scipy_method(A):
+    w, v = alg.eigsh(A, k=1, which='LA')  # Macierz jest symetryczna
+    evalue = w[0]
+    evector = v[:, 0]
+    if evector[0] < 0:
+        evector *= -1
+    return evector / algnorm.norm(evector), evalue
+
+
+def _inv(x, y):
+    if x != 0:
+        return 1/(x*y)
+    else:
+        return 0.0
+
+
+def compute_merw_matrix(A, k=1, method=scipy_method):
+    n = A.get_shape()[0]
+    evector, evalue = method(A)
+    print(min(evector))
+    mat1 = smat.diags([evector], [0], shape=(n, n), format='csc')
+    mat2 = smat.diags([[_inv(v, evalue) for v in evector]], [0], shape=(n, n), format='csc')
+    return mat2*A*mat1, evector, evalue, [v*v for v in evector]
 
 
 def compute_grw(A):  # Wyznacza rozkład prawdopodobieństwa i rozkład stacjonarny dla zwykłego błądzenia
