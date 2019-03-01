@@ -29,6 +29,7 @@ def print_adiacency_matrix(A):
 
 def __unit_test(graph):
     A = merw.graph_to_matrix(graph)
+    n = len(graph)
     print('\n>>>> GRAF: ')
     print_adiacency_matrix(A)
     Rsim, eps = merw.compute_basic_simrank(graph, .9, 0, 1000)
@@ -40,9 +41,14 @@ def __unit_test(graph):
     print_similarity_matrix(Rmerw)
     print('Dokładność:', eps)
     print('Samo MERW')
-    P, val, vekt, dist = merw.compute_merw(A)
+    P, vekt, val, dist = merw.compute_merw(A)
     print('Rozkład stacjonarny: ', dist)
     print_similarity_matrix(P)
+    print('Eigen-wieghted:')
+    for v in range(n):
+        for w in graph[v]:
+            if v < w:
+                print('(', v+1, w+1, ')', vekt[v]*vekt[w]/val)
     print('Samo GRW')
     P, dist = merw.compute_grw(A)
     print('Rozkład stacjonarny: ', dist)
@@ -85,39 +91,92 @@ def __experiment_plain():
     # Tego nie chce mi się rysować.
     graph2 = [[1, 2, 3, 4, 5], [0, 2], [0, 1, 3], [0, 2, 4], [0, 3, 5], [0, 4],
               [7, 8, 9], [6], [6], [6, 10], [9]]
+    graph_o = [[1], [0, 2, 3], [1, 3], [1, 2, 4], [3]]
     #
     #  1 - 2 - 3 - 4 - 5    7 - 6 - 8
     #    \  \  |  /  /          |
     #      --- 0 ---            9 - 10
     #
     __unit_test(graph1)
+    __unit_test(graph_o)
     # for g in merw.get_all_components(graph2):
     #    unit_test(g)
-    __test_pdistance_alpha(graph1)
+    #__test_pdistance_alpha(graph1)
 
 
-def __experiment_01():
-    data = dataset.DataSet('../datasets/', 'gr-qc', 'basic-test')
-    matrix = sparse.csc_matrix(data.get_training_set(mode='adjacency_matrix_lil'), dtype='f')
-    training = data.get_training_set()
-    test = data.get_test_edges()
-    print('N=', data.vx_count)
-    print('Obliczanie macierzy przejścia MERW...')
-    Pmerw, v, val, sdist = merw.compute_merw(matrix)
-    print(Pmerw.get_shape()[0])
-    print('Obliczanie macierzy odległości...')
-    p_dist_merw = merw.compute_P_distance(Pmerw)
-    print('Skuteczność (AUC):', \
-          metrics.auc(data.vx_count, training, test, p_dist_merw, 500))
+def test_dataset_symmetry(data_set, set_no=1):
+    data = dataset.DataSet('../datasets/', 'gr-qc', data_set)
+    matrix = sparse.csc_matrix(
+        data.get_training_set(mode='adjacency_matrix_lil', ds_index=set_no), dtype='d')
+    print('DATASET ', data_set)
+    for i in range(data.vx_count):
+        for j in range(i):
+            if matrix[i, j] != matrix[j, i]:
+                print("ERROR! ({},{})".format(i, j), end=' ')
+    print(' OK')
 
-    print('Obliczanie macierzy przejścia GRW...')
+
+def __experiment_01(data_set, skipSimRank=False, set_no=1, a=0.5, aucn=2000, simrank_iter=15):
+    data = dataset.DataSet('../datasets/', 'gr-qc', data_set)
+    matrix = sparse.csc_matrix(
+        data.get_training_set(mode='adjacency_matrix_lil', ds_index=set_no), dtype='d')
+    training = metrics.get_edges_set(data.get_training_set())
+    test = metrics.get_edges_set(data.get_test_edges())
+
+    print('Zestaw',set_no,' N=', data.vx_count)
+    print('Obliczanie: macierzy przejścia MERW...', end=' ')
+    Pmerw, vekt, eval, stat = merw.compute_merw_matrix(matrix)
+    #print(vekt)
+    #print(Pmerw.get_shape()[0])
+    print('macierzy "odległości"...')
+    p_dist_merw = merw.compute_P_distance(Pmerw, alpha=a)
+    print('Obliczanie: macierzy przejścia GRW... ', end=' ')
     Pgrw, sd = merw.compute_grw(matrix)
-    print('Obliczanie macierzy odległości...')
-    p_dist_grw = merw.compute_P_distance(Pgrw)
-    print('Skuteczność (AUC):', \
-          metrics.auc(data.vx_count, training, test, p_dist_grw, 500))
+    print('macierzy "odległości"...')
+    p_dist_grw = merw.compute_P_distance(Pgrw, alpha=a)
+    print('   Skuteczność PD (AUC {}):'.format(aucn),
+          metrics.auc(data.vx_count, training, test, p_dist_grw, aucn))
+    print(' Skuteczność MEPD (AUC {}):'.format(aucn),
+          metrics.auc(data.vx_count, training, test, p_dist_merw, aucn))
+
+    if skipSimRank:
+        return
+    graph = merw.matrix_to_graph(matrix)
+    #print(graph)
+    print('SimRank...')
+    sr, eps = merw.compute_basic_simrank(graph, a, maxiter=simrank_iter)
+    print(' Dokładność:', eps)
+    print('Skuteczność (AUC {}):'.format(aucn),
+          metrics.auc(data.vx_count, training, test, sr, aucn))
+
+    print('MERW SimRank...')
+    sr, eps = merw.compute_merw_simrank_ofmatrix(matrix, a, maxiter=simrank_iter)
+    print(' Dokładność:', eps)
+    print('Skuteczność (AUC {}):'.format(aucn),
+          metrics.auc(data.vx_count, training, test, sr, aucn))
+
+
+def __test_mat_merw():
+    graph = [[1, 2], [0, 2], [0, 1, 3, 4], [2, 4],
+              [2, 3, 5], [4, 6], [5, 7, 8], [6, 8],
+              [6, 7, 9, 10], [8, 10], [8, 9]]
+    A = merw.graph_to_matrix(graph)
+    Q, v, val, dist = merw.compute_merw_matrix(A, method=merw.scipy_method)
+    print('SciPy ', val, v)
+    #print(Q*dist)
+    print(dist)
+    print(dist*Q)
+    v, val = merw.power_method(A)
+    print('Moje ', val, v)
+    print(v*A)
+    print(val*v)
 
 
 if __name__ == '__main__':  # Odrobina testów
     #__experiment_plain()
-    __experiment_01()
+    #__experiment_01('basic-test-bis', aucn=5000)
+    #for i in range(1, 10):
+        #test_dataset_symmetry('basic-test', set_no=i)
+        #__experiment_01('basic-test', skipSimRank=True, set_no=i, aucn=5000)
+    #__test_mat_merw()
+    __experiment_01('basic-test', aucn=7000)
