@@ -28,6 +28,7 @@ def edge_list_to_sparse_lil(size, edges):
     mx = lil_matrix((size, size), dtype='uint8')
     for v1, v2 in edges:
         mx[v1, v2] = 1
+        mx[v2, v1] = 1
     return mx
 
 

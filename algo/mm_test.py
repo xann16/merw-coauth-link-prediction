@@ -1,8 +1,10 @@
+import dataset
 from dataset import DataSet
 import compute_merw as rw
 import metrics as mtr
 import kernel_methods as kern
 import numpy as np
+import scipy.sparse.linalg as sla
 from scipy.sparse import csc_matrix, csr_matrix
 
 
@@ -147,6 +149,11 @@ def walks_survey(A):
         rw.compute_merw(csr_matrix(A, (A.shape[0], A.shape[1]), 'd'))
     v_merw *= -1
 
+    l, v = sla.eigsh(csr_matrix(A, (A.shape[0], A.shape[1]), 'd'), 1,
+                     which='LA')
+    lambda_max = l[0]
+    v_max = v[:, 0]
+
     print()
     print('P (MERW transition matrix):')
     print_sparse_as_dense(P_merw)
@@ -158,10 +165,12 @@ def walks_survey(A):
     print()
     print('lambda (max eigenvalue):')
     print(lambda_merw)
+    print(lambda_max)
 
     print()
     print('v (max eigenvector):')
     print(v_merw)
+    print(v_max)
 
     W = kern.compute_eigen_weighted_graph(
         csr_matrix(A, (A.shape[0], A.shape[1]), 'd'), lambda_merw, v_merw)
@@ -274,6 +283,58 @@ def walks_survey(A):
     print_sparse_as_dense(NMENK)
 
 
+def dk_tests_1k():
+    ds = DataSet('../datasets/', 'gr-qc', 'eg1k')
+    trn, tst = ds.get_dataset()
+    trns, tsts = mtr.get_edges_set(trn), mtr.get_edges_set(tst)
+    A = csr_matrix(dataset.edge_list_to_sparse_lil(ds.vx_count, trn),
+                   (ds.vx_count, ds.vx_count), 'd')
+
+    ls, vs = sla.eigsh(A, 1, which='LA')
+    l_max = ls[0]
+    v_max = vs[:, 0]
+
+    # print("Values of AUC (1000 samples) and precision (K=30) " +
+    #       "for heat diffusion kernel variants:")
+
+    print("Values of AUC (1000 samples) for heat diffusion kernel variants:")
+
+    auc_sampl = 1000
+    # prc_k = 30
+
+    # DK
+    DK = kern.heat_diffusion_kernel(kern.laplacian(A))
+
+    auc = mtr.auc(ds.vx_count, trns, tsts, DK, auc_sampl)
+    # prc = mtr.precision(ds.vx_count, trns, tsts, DK, prc_k)
+    print("   DK - AUC:  {:.4f}".format(auc))
+    # print("   DK - PREC: {:.4f}".format(prc))
+
+    # NDK
+    NDK = kern.heat_diffusion_kernel(kern.symmetric_normalized_laplacian(A))
+
+    auc = mtr.auc(ds.vx_count, trns, tsts, NDK, auc_sampl)
+    # prc = mtr.precision(ds.vx_count, trns, tsts, NDK, prc_k)
+    print("  NDK - AUC:  {:.4f}".format(auc))
+    # print("  NDK - PREC: {:.4f}".format(prc))
+
+    # MEDK
+    MEDK = kern.heat_diffusion_kernel(kern.mecl(A, l_max, v_max))
+
+    auc = mtr.auc(ds.vx_count, trns, tsts, MEDK, auc_sampl)
+    # prc = mtr.precision(ds.vx_count, trns, tsts, MEDK, prc_k)
+    print(" MEDK - AUC: {:.4f}".format(auc))
+    # print(" MEDK - PREC: {:.4f}".format(prc))
+
+    # NMEDK
+    NMEDK = kern.heat_diffusion_kernel(kern.mecl(A, l_max, v_max, type='sym'))
+
+    auc = mtr.auc(ds.vx_count, trns, tsts, NMEDK, auc_sampl)
+    # prc = mtr.precision(ds.vx_count, trns, tsts, NMEDK, prc_k)
+    print("NMEDK - AUC: {:.4f}".format(auc))
+    # print("NMEDK - PREC: {:.4f}".format(prc))
+
+
 if __name__ == '__main__':
     # print('TEST #1 - SMALL BASIC:')
     # test_small_basic()
@@ -284,5 +345,7 @@ if __name__ == '__main__':
     # print('WALKS SURVEY - small graph:\n')
     # walks_survey(get_small_adjmx())
 
-    print('WALKS SURVEY - article graph:\n')
-    walks_survey(get_art_adjmx())
+    # print('WALKS SURVEY - article graph:\n')
+    # walks_survey(get_art_adjmx())
+
+    dk_tests_1k()

@@ -50,6 +50,13 @@ def is_connected(graph):
     return cc_count == 1
 
 
+def is_symmetric(graph):
+    for i, j in zip(graph.nonzero()[0], graph.nonzero()[1]):
+        if not graph[j, i] > 0:
+            return False
+    return True
+
+
 def extract_maxcc_simple(size, edges):
     graph = edges_to_simple_graph(size, edges)
     _, labels = connected_components(graph, directed=False)
@@ -58,6 +65,9 @@ def extract_maxcc_simple(size, edges):
     graph = graph[labels == max_label]
     if not is_connected(graph):
         raise BaseException("Failed to extract maximal closed component.")
+    if not is_symmetric(graph):
+        raise BaseException("Extracted graph's adjacency matrix is not" +
+                            " symmetric.")
     return simple_graph_to_edges(graph)
 
 
