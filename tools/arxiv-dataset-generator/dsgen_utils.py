@@ -3,6 +3,8 @@ import json
 import shutil
 from os import path
 from datetime import datetime
+import calendar
+
 
 ARXIV_DT_ISO_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -46,12 +48,21 @@ def now_as_string():
     return datetime.now().strftime(ARXIV_DT_ISO_FORMAT)
 
 
-def append_clique_edges(edges, vertices):
+def str_to_utc_ts(string):
+    dt = parse_datetime(string)
+    return calendar.timegm(dt.utctimetuple())
+
+
+def append_clique_edges(edges, vertices, include_ts=False, ts=None):
     n = len(vertices)
     for i in range(0, n):
         for j in range(i + 1, n):
-            edges.append((vertices[i], vertices[j]))
-            edges.append((vertices[j], vertices[i]))
+            if include_ts:
+                edges.append((ts, (vertices[i], vertices[j])))
+                edges.append((ts, (vertices[j], vertices[i])))
+            else:
+                edges.append((vertices[i], vertices[j]))
+                edges.append((vertices[j], vertices[i]))
 
 
 def write_edges_to_file(edges, filepath):
@@ -68,6 +79,21 @@ def write_to_json(data, filepath):
 def load_from_json(filepath):
     with open(filepath, 'r', encoding='utf-8') as file:
         return json.load(file)
+
+
+def triples_to_rear_pairs(triples):
+    pairs = []
+    for x, y, z in triples:
+        pairs.append((y, z))
+    return pairs
+
+
+def find_utc_edges_split_index(utc_edges, split_ts):
+    for i in range(len(utc_edges)):
+        if utc_edges[i][0] > split_ts:
+            return i
+    return len(utc_edges)
+
 
 def process_author_name(name, disable=False):
     if disable:

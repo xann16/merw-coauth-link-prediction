@@ -91,7 +91,7 @@ def auc(vx_count, train_edges, test_edges, scores, samples=0):
 def find_min(l):
     min_val = l[0]
     min_pos = 0
-    for i in range(0, len(l)):
+    for i in range(1, len(l)):
         if l[i] < min_val:
             min_pos = i
             min_val = l[i]
@@ -104,23 +104,24 @@ def get_top_predictions(vx_count, train_edges, scores, count):
     res = [(0, 0)] * count
     scs = [0] * count
 
-    for i in range(1, vx_count):
-        for j in range(i, vx_count):
+    for i in range(0, vx_count):
+        for j in range(i + 1, vx_count):
             if (i, j) in train_edges:
                 continue
             if scores[i, j] > curr_min_val:
                 res[curr_min_pos] = (i, j)
                 scs[curr_min_pos] = scores[i, j]
                 curr_min_pos, curr_min_val = find_min(scs)
+
     return res
 
 
 # Oblicza metrykę Precision (parametry jak dla auc(), oprócz ostatniego)
 # -> L - ilość najlepiej ocenionych krawędzi branych pod uwagę
 def precision(vx_count, train_edges, test_edges, scores, L=30):
-    ranked_predictions = get_top_predictions(vx_count, train_edges, scores, L)
+    predictions = get_top_predictions(vx_count, train_edges, scores, L)
     score = 0
-    for edge in ranked_predictions[:L]:
+    for edge in predictions[:L]:
         if edge in test_edges:
             score += 1
     return score / L

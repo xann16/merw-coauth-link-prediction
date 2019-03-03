@@ -7,7 +7,12 @@ import dsgen_utils as util
 
 
 def get_edges_for_random(category, cache_path, t_from, t_to):
-    return parser.load_simple_edge_list(category, cache_path, t_from, t_to)
+    return parser.load_edge_list(category, cache_path, t_from, t_to)
+
+
+def get_edges_for_chrono(category, cache_path, t_from, t_to):
+    return parser.load_edge_list(category, cache_path, t_from, t_to,
+                                 include_ts=True)
 
 
 def prepare_random_datesets(edges, settings, vx_count, edge_count, base_path):
@@ -29,9 +34,8 @@ def prepare_random_datesets(edges, settings, vx_count, edge_count, base_path):
                 "vertices": vx_count,
                 "edges": edge_count,
                 "set_count": ds_count,
-                "format_type": "basic_edge_list",
+                "format_type": "basic-edge-list",
                 "split_method": settings["split_method"],
-                "is_maxcc": not settings["disable_maxcc_extraction"],
                 "training_sets_size": edge_count - test_edges_count,
                 "test_sets_size": test_edges_count,
                 "created": util.now_as_string()}
@@ -50,8 +54,6 @@ def prepare_k_cross_random_datesets(edges, settings, vx_count, edge_count,
     k_frac = 1 / k
     k_size = 0
 
-    print("Here!")
-
     random.shuffle(edges)
     for i in range(1, k + 1):
         full_path = path.join(base_path, '{:03}_{}.cross.csv'
@@ -65,9 +67,8 @@ def prepare_k_cross_random_datesets(edges, settings, vx_count, edge_count,
                 "vertices": vx_count,
                 "edges": edge_count,
                 "set_count": k,
-                "format_type": "basic_edge_list",
+                "format_type": "basic-edge-list",
                 "split_method": settings["split_method"],
-                "is_maxcc": not settings["disable_maxcc_extraction"],
                 "training_sets_size": k_size * (k - 1),
                 "test_sets_size": k_size,
                 "created": util.now_as_string()}
@@ -79,10 +80,79 @@ def prepare_k_cross_random_datesets(edges, settings, vx_count, edge_count,
     print('For details, see: {}'.format(meta_path))
 
 
+def prepare_chrono_perc_dataset(ts_edges, settings, vx_count, edge_count,
+                                base_path):
+    ds_name = settings["name"]
+    test_frac = settings["test_perc"] / 100
+    test_edges_count = int(edge_count * test_frac)
+    train_edges_count = edge_count - test_edges_count
+    test_path = path.join(base_path, '{:03}_{}.test.csv'.format(1, ds_name))
+    train_path = path.join(base_path, '{:03}_{}.train.csv'.format(1, ds_name))
+
+    edges = util.triples_to_rear_pairs(ts_edges)
+
+    util.write_edges_to_file(edges[:train_edges_count], train_path)
+    util.write_edges_to_file(edges[train_edges_count:], test_path)
+
+    metadata = {"name": ds_name,
+                "vertices": vx_count,
+                "edges": edge_count,
+                "set_count": 1,
+                "format_type": "basic-edge-list",
+                "split_method": settings["split_method"],
+                "training_sets_size": train_edges_count,
+                "test_sets_size": test_edges_count,
+                "created": util.now_as_string()}
+    meta_path = path.join(base_path, '{}_meta.json'.format(ds_name))
+    util.write_to_json(metadata, meta_path)
+
+    print('Data files for "{}" dataset succesfully created '.format(ds_name) +
+          '({} vertices, {} edges).'.format(vx_count, edge_count))
+    print('For details, see: {}'.format(meta_path))
+
+
+def prepare_chrono_from_dataset(ts_edges, settings, vx_count, edge_count,
+                                base_path):
+    ds_name = settings["name"]
+    test_path = path.join(base_path, '{:03}_{}.test.csv'.format(1, ds_name))
+    train_path = path.join(base_path, '{:03}_{}.train.csv'.format(1, ds_name))
+
+    split_ts = util.str_to_utc_ts(settings["test_from"])
+    split_index = util.find_utc_edges_split_index(ts_edges, split_ts)
+    edges = util.triples_to_rear_pairs(ts_edges)
+
+    util.write_edges_to_file(edges[:split_index], train_path)
+    util.write_edges_to_file(edges[split_index:], test_path)
+
+    metadata = {"name": ds_name,
+                "vertices": vx_count,
+                "edges": edge_count,
+                "set_count": 1,
+                "format_type": "basic-edge-list",
+                "split_method": settings["split_method"],
+                "training_sets_size": split_index,
+                "test_sets_size": edge_count - split_index,
+                "created": util.now_as_string()}
+    meta_path = path.join(base_path, '{}_meta.json'.format(ds_name))
+    util.write_to_json(metadata, meta_path)
+
+    print('Data files for "{}" dataset succesfully created '.format(ds_name) +
+          '({} vertices, {} edges).'.format(vx_count, edge_count))
+    print('For details, see: {}'.format(meta_path))
+
+
 SPLIT_METHOD_FUNCS = {"random":
-                      (get_edges_for_random, prepare_random_datesets),
+                      (get_edges_for_random, preproc.preprocess_simple_graph,
+                       prepare_random_datesets),
                       "k-cross-random":
-                      (get_edges_for_random, prepare_k_cross_random_datesets)}
+                      (get_edges_for_random, preproc.preprocess_simple_graph,
+                       prepare_k_cross_random_datesets),
+                      "chrono-perc":
+                      (get_edges_for_chrono, preproc.preprocess_chrono_graph,
+                       prepare_chrono_perc_dataset),
+                      "chrono-from":
+                      (get_edges_for_chrono, preproc.preprocess_chrono_graph,
+                       prepare_chrono_from_dataset)}
 
 
 def process_dataset(category, settings, base_path):
@@ -100,21 +170,16 @@ def process_dataset(category, settings, base_path):
         return
 
     arxiv.update_cache(category, cache_path, t_from, t_to)
+    sm = settings["split_method"]
 
-    vx_count, edge_count, edges = \
-        SPLIT_METHOD_FUNCS[settings["split_method"]][0](category,
-                                                        cache_path,
-                                                        t_from,
-                                                        t_to)
+    # LOAD EDGE LIST
+    vx_count, edges = \
+        SPLIT_METHOD_FUNCS[sm][0](category, cache_path, t_from, t_to)
 
-    if not settings["disable_maxcc_extraction"]:
-        print("Extracting mcc from main graph ({} vertices)."
-              .format(vx_count))
-        vx_count, edge_count, edges = \
-            preproc.extract_maximal_connected_component(vx_count, edges)
+    # PREPROCESS GRAPH: FLATTEN, EXTRACT MCC, etc.
+    print("Preprocessing: extracting mcc from main graph ({} vertices)."
+          .format(vx_count))
+    vx_count, edge_count, edges = SPLIT_METHOD_FUNCS[sm][1](vx_count, edges)
 
-    SPLIT_METHOD_FUNCS[settings["split_method"]][1](edges,
-                                                    settings,
-                                                    vx_count,
-                                                    edge_count,
-                                                    output_path)
+    SPLIT_METHOD_FUNCS[sm][2](edges, settings, vx_count, edge_count,
+                              output_path)

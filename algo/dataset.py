@@ -1,6 +1,7 @@
 import json
 from os import path
-from scipy.sparse import lil_matrix
+from scipy.sparse import lil_matrix, csr_matrix, csc_matrix
+import numpy as np
 
 
 def get_filepath(base_path, name, ds_index, ds_type_string):
@@ -17,7 +18,7 @@ def get_basic_edge_list(filepath):
     return edges
 
 
-FORMAT_TO_LOADER = {'basic_edge_list': get_basic_edge_list}
+FORMAT_TO_LOADER = {'basic-edge-list': get_basic_edge_list}
 
 
 def proj_2(_, x):
@@ -25,15 +26,47 @@ def proj_2(_, x):
 
 
 def edge_list_to_sparse_lil(size, edges):
-    mx = lil_matrix((size, size), dtype='uint8')
+    mx = lil_matrix((size, size))
     for v1, v2 in edges:
         mx[v1, v2] = 1
         mx[v2, v1] = 1
     return mx
 
 
+def edge_list_to_dense(size, edges):
+    mx = np.zeros(size * size)
+    mx.reshape((size, size))
+    for v1, v2 in edges:
+        mx[v1, v2] = 1
+        mx[v2, v1] = 1
+    return mx
+
+
+def prep_sparse_matrix_args(edges):
+    ii, jj = [], []
+    for v1, v2 in edges:
+        ii.append(v1)
+        ii.append(v2)
+        jj.append(v2)
+        jj.append(v1)
+    return ii, jj, [1] * len(ii)
+
+
+def edge_list_to_sparse_csr(size, edges):
+    rows, cols, data = prep_sparse_matrix_args(edges)
+    return csr_matrix((data, (rows, cols)), (size, size), 'd')
+
+
+def edge_list_to_sparse_csc(size, edges):
+    rows, cols, data = prep_sparse_matrix_args(edges)
+    return csr_matrix((data, (rows, cols)), (size, size), 'd')
+
+
 MODE_EDGES_TO_OUTPUT = {'edge_list': proj_2,
-                        'adjacency_matrix_lil': edge_list_to_sparse_lil}
+                        'adjacency_matrix_lil': edge_list_to_sparse_lil,
+                        'adjacency_matrix_csr': edge_list_to_sparse_csr,
+                        'adjacency_matrix_csc': edge_list_to_sparse_csc,
+                        'adjacency_matrix_d': edge_list_to_dense}
 
 
 def basic_load_training_set(base_path, name, ds_index, _, format_type):
@@ -72,7 +105,11 @@ def k_cross_load_test_set(base_path, name, ds_index, _, format_type):
 SPLIT_METHOD_TO_LOADERS = {'random': (basic_load_training_set,
                                       basic_load_test_set),
                            'k-cross-random': (k_cross_load_training_set,
-                                              k_cross_load_test_set)}
+                                              k_cross_load_test_set),
+                           'chrono-perc': (basic_load_training_set,
+                                           basic_load_test_set),
+                           'chrono-from': (basic_load_training_set,
+                                           basic_load_test_set)}
 
 
 class DataSet:
@@ -83,7 +120,6 @@ class DataSet:
     edge_count = 0
     training_egdes = 0
     test_edges = 0
-    is_maxcc = False
     set_count = 0
     format_type = ""
     split_method = ""
@@ -99,7 +135,6 @@ class DataSet:
         self.edge_count = md["edges"]
         self.train_size = md["training_sets_size"]
         self.test_size = md["test_sets_size"]
-        self.is_maxcc = md["is_maxcc"]
         self.format_type = md["format_type"]
         self.split_method = md["split_method"]
         self.set_count = md["set_count"]

@@ -9,13 +9,13 @@ def load_articles_from_cache(category, year, cache_path):
 
 
 def parse_article_entry(edges, author_ids, curr_auth_id,
-                        article, t_from, t_to):
+                        article, t_from, t_to, include_ts=False):
     authors = article["authors"]
     publ = util.parse_datetime(article["published"])
     if len(authors) < 2 or publ < t_from or publ > t_to:
         return 0
     res, ids = update_author_ids(author_ids, curr_auth_id, authors)
-    util.append_clique_edges(edges, ids)
+    util.append_clique_edges(edges, ids, include_ts, publ)
     return res
 
 
@@ -32,7 +32,7 @@ def update_author_ids(author_ids, curr_auth_id, authors):
     return new_auth_ids, ids
 
 
-def load_simple_edge_list(category, cache_path, t_from, t_to):
+def load_edge_list(category, cache_path, t_from, t_to, include_ts=False):
     edges = []
     author_ids = {}
     current_id = 0
@@ -46,7 +46,8 @@ def load_simple_edge_list(category, cache_path, t_from, t_to):
                                                    current_id,
                                                    article,
                                                    t_from,
-                                                   t_to)
+                                                   t_to,
+                                                   include_ts)
             current_id += new_author_count
 
-    return current_id, int(len(edges) / 2), edges
+    return current_id, edges

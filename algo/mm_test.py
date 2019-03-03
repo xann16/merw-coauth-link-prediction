@@ -5,7 +5,9 @@ import metrics as mtr
 import kernel_methods as kern
 import numpy as np
 import scipy.sparse.linalg as sla
-from scipy.sparse import csc_matrix, csr_matrix
+from scipy.sparse import csc_matrix, csr_matrix, lil_matrix
+import warnings
+from scipy.sparse.csgraph import connected_components
 
 
 def get_small_scores():
@@ -39,10 +41,10 @@ def test_small_basic():
         print("ITER #{}".format(i))
 
         trn, tst = ds.get_dataset(i)
-        print('\tTRAIN: {}'.format(trn))
-        print('\tTEST:  {}'.format(tst))
-
         trns, tsts = mtr.get_edges_set(trn), mtr.get_edges_set(tst)
+        print('\tTRAIN: {}'.format(trns))
+        print('\tTEST:  {}'.format(tsts))
+
         scores = get_small_scores()
 
         auc_res_tot = mtr.auc(ds.vx_count, trns, tsts, scores)
@@ -287,35 +289,63 @@ def dk_tests_1k():
     ds = DataSet('../datasets/', 'gr-qc', 'eg1k')
     trn, tst = ds.get_dataset()
     trns, tsts = mtr.get_edges_set(trn), mtr.get_edges_set(tst)
-    A = csr_matrix(dataset.edge_list_to_sparse_lil(ds.vx_count, trn),
-                   (ds.vx_count, ds.vx_count), 'd')
+
+    rmtrns, rmtsts = set(), set()
+    toTest = True
+    for x in tsts:
+        if x in trns:
+            if toTest:
+                rmtrns.add(x)
+            else:
+                rmtsts.add(x)
+        toTest = not toTest
+
+    for x in rmtrns:
+        trns.remove(x)
+
+    for x in rmtsts:
+        tsts.remove(x)
+
+    for x in tsts:
+        if x in trns:
+            print("NO!")
+
+    A = lil_matrix((ds.vx_count, ds.vx_count))
+    for v1, v2 in trns:
+        A[v1, v2] = 1
+        A[v2, v1] = 1
+
+    A = csr_matrix(A, (ds.vx_count, ds.vx_count), 'd')
 
     ls, vs = sla.eigsh(A, 1, which='LA')
     l_max = ls[0]
     v_max = vs[:, 0]
 
+
     # print("Values of AUC (1000 samples) and precision (K=30) " +
     #       "for heat diffusion kernel variants:")
 
-    print("Values of AUC (1000 samples) for heat diffusion kernel variants:")
+    print("Values of AUC (10000 samples) for heat diffusion kernel variants:")
 
-    auc_sampl = 1000
-    # prc_k = 30
+    auc_sampl = 10000
+    prc_k = 30
 
     # DK
     DK = kern.heat_diffusion_kernel(kern.laplacian(A))
 
     auc = mtr.auc(ds.vx_count, trns, tsts, DK, auc_sampl)
-    # prc = mtr.precision(ds.vx_count, trns, tsts, DK, prc_k)
-    print("   DK - AUC:  {:.4f}".format(auc))
-    # print("   DK - PREC: {:.4f}".format(prc))
+    print("   DK - AUC: {:.4f}".format(auc))
+    prc = mtr.precision(ds.vx_count, trns, tsts, DK, prc_k)
+    print("   DK - PRC: {:.4f}".format(prc))
 
     # NDK
+    warnings.filterwarnings("ignore")
+
     NDK = kern.heat_diffusion_kernel(kern.symmetric_normalized_laplacian(A))
 
     auc = mtr.auc(ds.vx_count, trns, tsts, NDK, auc_sampl)
     # prc = mtr.precision(ds.vx_count, trns, tsts, NDK, prc_k)
-    print("  NDK - AUC:  {:.4f}".format(auc))
+    print("  NDK - AUC: {:.4f}".format(auc))
     # print("  NDK - PREC: {:.4f}".format(prc))
 
     # MEDK
@@ -335,6 +365,83 @@ def dk_tests_1k():
     # print("NMEDK - PREC: {:.4f}".format(prc))
 
 
+def check_trn_tst_disjoint(ds):
+    trn, tst = ds.get_dataset()
+    trns, tsts = mtr.get_edges_set(trn), mtr.get_edges_set(tst)
+    overlap_count = 0
+    for edge in trns:
+        if edge in tsts:
+            overlap_count += 1
+    if overlap_count == 0:
+        print('Dataset "{}" has disjoint training and test sets'
+              .format(ds.name))
+    else:
+        print('Dataset "{}" has {} common edges in training and test sets'
+              .format(ds.name), overlap_count)
+
+
+def check_trn_symmetric_and_connected(ds):
+    A = ds.get_training_set(mode='adjacency_matrix_csr')
+
+    nonsym_count = 0
+    for i, j in zip(A.nonzero()[0], A.nonzero()[1]):
+        if not A[j, i] > 0:
+            nonsym_count += 1
+    if nonsym_count == 0:
+        print('Training set "{}" matrix is symmetric'
+              .format(ds.name))
+    else:
+        print('Training set "{}" matrix has {} asymmetric entries'
+              .format(ds.name, nonsym_count))
+
+    diag_count = 0
+    for i in range(0, A.get_shape()[0]):
+        if A[i, i] > 0:
+            diag_count += 1
+    if diag_count == 0:
+        print('Training set "{}" matrix nas no diagonal entries'
+              .format(ds.name))
+    else:
+        print('Training set "{}" matrix has {} diagonal entries'
+              .format(ds.name, diag_count))
+
+    cc_count = connected_components(A, directed=False, return_labels=False)
+    if cc_count == 1:
+        print('Training set "{}" graph is connected'
+              .format(ds.name))
+    else:
+        print('Training set "{}" graph has {} connected components'
+              .format(ds.name, cc_count))
+
+    tst = ds.get_test_edges()
+    for i, j in tst:
+        A[i, j] = 1
+        A[j, i] = 1
+
+    cc_count = connected_components(A, directed=False, return_labels=False)
+    if cc_count == 1:
+        print('Dataset "{}" total graph is connected'
+              .format(ds.name))
+    else:
+        print('Dataset "{}" total graph has {} connected components'
+              .format(ds.name, cc_count))
+
+    print()
+
+
+def basic_eg1k_checkup():
+    dss = []
+
+    dss.append(DataSet('../datasets/', 'gr-qc', 'eg1k_rnd_std'))
+    dss.append(DataSet('../datasets/', 'gr-qc', 'eg1k_rnd_kcv'))
+    dss.append(DataSet('../datasets/', 'gr-qc', 'eg1k_chr_frm'))
+    dss.append(DataSet('../datasets/', 'gr-qc', 'eg1k_chr_prc'))
+
+    for ds in dss:
+        check_trn_tst_disjoint(ds)
+        check_trn_symmetric_and_connected(ds)
+
+
 if __name__ == '__main__':
     # print('TEST #1 - SMALL BASIC:')
     # test_small_basic()
@@ -348,4 +455,6 @@ if __name__ == '__main__':
     # print('WALKS SURVEY - article graph:\n')
     # walks_survey(get_art_adjmx())
 
-    dk_tests_1k()
+    # dk_tests_1k()
+
+    basic_eg1k_checkup()
