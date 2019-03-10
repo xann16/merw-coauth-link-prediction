@@ -1,16 +1,6 @@
 import random
 
 
-def get_edges_set(edges):
-    res = set()
-    for i, j in edges:
-        if i < j:
-            res.add((i, j))
-        else:
-            res.add((j, i))
-    return res
-
-
 def pick_rnd_missing(test_edges):
     return random.sample(test_edges, 1)[0]
 

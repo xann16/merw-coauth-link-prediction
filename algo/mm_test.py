@@ -1,4 +1,5 @@
 import dataset
+import utils
 from dataset import DataSet
 import compute_merw as rw
 import metrics as mtr
@@ -41,7 +42,7 @@ def test_small_basic():
         print("ITER #{}".format(i))
 
         trn, tst = ds.get_dataset(i)
-        trns, tsts = mtr.get_edges_set(trn), mtr.get_edges_set(tst)
+        trns, tsts = utils.get_edges_set(trn), utils.get_edges_set(tst)
         print('\tTRAIN: {}'.format(trns))
         print('\tTEST:  {}'.format(tsts))
 
@@ -78,7 +79,7 @@ def test_small_cross():
         print('\tTRAIN: {}'.format(trn))
         print('\tTEST:  {}'.format(tst))
 
-        trns, tsts = mtr.get_edges_set(trn), mtr.get_edges_set(tst)
+        trns, tsts = utils.get_edges_set(trn), utils.get_edges_set(tst)
         scores = get_small_scores()
 
         auc_res_tot = mtr.auc(ds.vx_count, trns, tsts, scores)
@@ -288,7 +289,7 @@ def walks_survey(A):
 def dk_tests_1k():
     ds = DataSet('../datasets/', 'gr-qc', 'eg1k')
     trn, tst = ds.get_dataset()
-    trns, tsts = mtr.get_edges_set(trn), mtr.get_edges_set(tst)
+    trns, tsts = utils.get_edges_set(trn), utils.get_edges_set(tst)
 
     rmtrns, rmtsts = set(), set()
     toTest = True
@@ -367,7 +368,7 @@ def dk_tests_1k():
 
 def check_trn_tst_disjoint(ds):
     trn, tst = ds.get_dataset()
-    trns, tsts = mtr.get_edges_set(trn), mtr.get_edges_set(tst)
+    trns, tsts = utils.get_edges_set(trn), utils.get_edges_set(tst)
     overlap_count = 0
     for edge in trns:
         if edge in tsts:

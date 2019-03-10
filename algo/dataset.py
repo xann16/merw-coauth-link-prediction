@@ -2,6 +2,7 @@ import json
 from os import path
 from scipy.sparse import lil_matrix, csr_matrix, csc_matrix
 import numpy as np
+from dataset_checks import check_dataset
 
 
 def get_filepath(base_path, name, ds_index, ds_type_string):
@@ -59,7 +60,7 @@ def edge_list_to_sparse_csr(size, edges):
 
 def edge_list_to_sparse_csc(size, edges):
     rows, cols, data = prep_sparse_matrix_args(edges)
-    return csr_matrix((data, (rows, cols)), (size, size), 'd')
+    return csc_matrix((data, (rows, cols)), (size, size), 'd')
 
 
 MODE_EDGES_TO_OUTPUT = {'edge_list': proj_2,
@@ -171,7 +172,16 @@ class DataSet:
                                                           self.set_count,
                                                           self.format_type)
 
-    def get_dataset(self, ds_index=1, ts_mode='edge_list'):
+    def get_dataset(self, ds_index=1, ts_mode='edge_list', do_check=False):
         self.throw_if_index_oob(ds_index)
-        return (self.get_training_set(ds_index, ts_mode),
-                self.get_test_edges(ds_index))
+
+        trn_data = self.get_training_set(ds_index, ts_mode)
+        tst_data = self.get_test_edges(ds_index)
+
+        if do_check:
+            errors = check_dataset(trn_data, tst_data, ts_mode)
+            if errors:
+                raise BaseException("Invalid form of dataset being loaded:\n" +
+                                    errors)
+
+        return (trn_data, tst_data)
