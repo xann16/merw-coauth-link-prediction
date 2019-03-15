@@ -38,7 +38,7 @@ if __name__ == '__main__':
                 base_dir = sys.argv[2]
 
             settings = load_settings(settings_path)
-            validator.validate_settings(settings)
+            import_src, import_fmt = validator.validate_settings(settings)
             prepare_dirs(base_dir, settings)
 
             index = 1
@@ -49,7 +49,9 @@ if __name__ == '__main__':
                           .format(index, total, dataset["name"]))
                     impl.process_dataset(settings["category"],
                                          dataset,
-                                         path.abspath(base_dir))
+                                         path.abspath(base_dir),
+                                         import_src,
+                                         import_fmt)
                 except BaseException as e:
                     print('Processing of {} aborted: {}'
                           .format(dataset["name"], e))

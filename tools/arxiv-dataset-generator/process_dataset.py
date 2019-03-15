@@ -4,6 +4,7 @@ import arxiv_api_client as arxiv
 import raw_data_parser as parser
 import graph_preproc as preproc
 import dsgen_utils as util
+import import_dataset as dsimp
 
 
 def get_edges_for_random(category, cache_path, t_from, t_to):
@@ -155,26 +156,32 @@ SPLIT_METHOD_FUNCS = {"random":
                        prepare_chrono_from_dataset)}
 
 
-def process_dataset(category, settings, base_path):
+def process_dataset(category, settings, base_path, import_src, import_fmt):
     if settings["disable"]:
         print('Processing dataset "{}" skipped.'.format(settings["name"]))
         return
 
-    cache_path = path.join(base_path, '.arxiv-cache', category)
     output_path = path.join(base_path, category, settings["name"])
-    t_from, t_to = util.parse_period(settings["period"])
-
     if settings["disable_overwrite"] and path.exists(output_path):
         print('Processing dataset "{}" skipped (already exists)'
               .format(settings["name"]))
         return
 
-    arxiv.update_cache(category, cache_path, t_from, t_to)
     sm = settings["split_method"]
 
-    # LOAD EDGE LIST
-    vx_count, edges = \
-        SPLIT_METHOD_FUNCS[sm][0](category, cache_path, t_from, t_to)
+    # DATASET FROM ARXIV DATA
+    if category != "import":
+        cache_path = path.join(base_path, '.arxiv-cache', category)
+        t_from, t_to = util.parse_period(settings["period"])
+        arxiv.update_cache(category, cache_path, t_from, t_to)
+        # LOAD EDGE LIST
+        vx_count, edges = \
+            SPLIT_METHOD_FUNCS[sm][0](category, cache_path, t_from, t_to)
+    else:
+        src_path = path.join(base_path, '.ext-cache', import_src)
+        # LOAD EDGE LIST
+        vx_count, edges = \
+            dsimp.FORMAT_IMPORT_FUNCS[import_fmt](src_path)
 
     # PREPROCESS GRAPH: FLATTEN, EXTRACT MCC, etc.
     print("Preprocessing: extracting mcc from main graph ({} vertices)."

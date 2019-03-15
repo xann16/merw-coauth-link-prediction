@@ -1,0 +1,15 @@
+{
+    "category": "import",
+    "source": "std_gr-qc_edges.csv",
+    "format": "edge-list-basic",
+    "reference_url": "https://snap.stanford.edu/data/ca-GrQc.html",
+    "datasets":
+    [
+        {
+            "name": "std_gr-qc",
+            "split_method": "k-cross-random",
+            "k_subset_count": 10,
+            "series_count": 1
+        }
+    ]
+}
