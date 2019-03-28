@@ -4,6 +4,7 @@ import shutil
 from os import path
 from datetime import datetime
 import calendar
+import arxiv_auth_snap_standardization as snapstd
 
 
 ARXIV_DT_ISO_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
@@ -98,10 +99,4 @@ def find_utc_edges_split_index(utc_edges, split_ts):
 def process_author_name(name, disable=False):
     if disable:
         return name
-    res = ''
-    tokens = name.split(' ')
-    for token in tokens[:-1]:
-        res += token[0]
-        res += '.'
-    res += tokens[-1]
-    return res
+    return snapstd.to_snap_standardized_auth_name(name)
