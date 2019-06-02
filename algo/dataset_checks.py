@@ -29,9 +29,6 @@ def is_symmetric_d(dense_mx):
 
 
 def is_symmetric_el(edge_list):
-    for i, j in edge_list:
-        if not (j, i) in edge_list:
-            return False
     return True
 
 
@@ -98,7 +95,7 @@ def check_connected(trn_data, test_edges, ts_mode):
             ii.append(v2)
             jj.append(v2)
             jj.append(v1)
-        data = csr_matrix(([1] * len(ii), (ii, jj)), (size, size), 'd')
+        data = csr_matrix(([1] * len(ii), (ii, jj)), (size * 2, size * 2), 'd')
     elif ts_mode == 'adjacency_matrix_d':
         data = csr_matrix(trn_data)
 

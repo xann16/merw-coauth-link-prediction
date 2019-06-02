@@ -1,0 +1,11 @@
+{
+  "name": "std_gr-qc_single",
+  "vertices": 4158,
+  "edges": 13422,
+  "set_count": 1,
+  "format_type": "basic-edge-list",
+  "split_method": "random",
+  "training_sets_size": 12080,
+  "test_sets_size": 1342,
+  "created": "2019-06-03T01:11:31Z"
+}

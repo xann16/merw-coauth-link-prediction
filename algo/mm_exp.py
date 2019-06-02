@@ -8,14 +8,14 @@ import sys
 
 KERNELS_BASE = ["CK", "NCK", "MECK", "NMECK", "DK", "NDK", "MEDK", "NMEDK",
                 "RK", "NRK", "MERK", "NMERK", "MENK", "NNK", "NMENK"]
-KERNELS_EXCLUDE = ["CK", "NCK", "MECK", "NMECK", "DK", "NDK", "MEDK", "NMEDK",
-                   "RK", "NRK", "MERK", "NMERK", "NNK", "NMENK"]
-
+#KERNELS_EXCLUDE = ["CK", "NCK", "MECK", "NMECK", "DK", "NDK", "MEDK", #"NMEDK",
+#                   "RK", "NRK", "MERK", "NMERK", "NNK", "MENK", "NMENK"]
+KERNELS_EXCLUDE = ["NNK"]
 CATEGORIES_BASE = ["gr-qc", "import"]
-CATEGORIES_EXCLUDE = ["import"]
+CATEGORIES_EXCLUDE = ["gr-qc"]
 
-DSNAMES_BASE = ["eg1k_chr_prc", "std_gr-qc"]
-DSNAMES_EXCLUDE = ["std_gr-qc"]
+DSNAMES_BASE = ["eg1k_chr_prc", "std_gr-qc", "std_gr-qc_single"]
+DSNAMES_EXCLUDE = ["eg1k_chr_prc", "std_gr-qc"]
 
 
 def get_kernel_names():
@@ -87,9 +87,10 @@ def calculate_kernel(A_csr, A_csc, l_max, v_max, type):
 def calculate_metrics(vx_count, training_edges, test_edges, kernel,
                       auc_samples=10000, precision_k=30):
     auc = mtr.auc(vx_count, training_edges, test_edges, kernel, auc_samples)
-    prc = mtr.precision(vx_count, training_edges, test_edges, kernel,
-                        precision_k)
-    return (auc, prc)
+    # prc = mtr.precision(vx_count, training_edges, test_edges, kernel,
+    #                     precision_k)
+    # return (auc, prc)
+    return auc
 
 
 def process_subset(base_dataset, index, kernels,
@@ -113,15 +114,15 @@ def process_subset(base_dataset, index, kernels,
     # process all kernels and obtain respective metrics
     for kernel_name in kernels:
         kernel = calculate_kernel(A_csr, A_csc, l_max, v_max, kernel_name)
-        auc, prc = calculate_metrics(base_dataset.vx_count,
-                                     training_edges,
-                                     test_edges,
-                                     kernel,
-                                     auc_samples,
-                                     precision_k)
-        results[kernel_name] = (auc, prc)
-        print("[{}:{}] {} - AUC: {:.2f}; PRC: {:.2f}".
-              format(base_dataset.base_path, index, kernel_name, auc, prc))
+        auc = calculate_metrics(base_dataset.vx_count,
+                                training_edges,
+                                test_edges,
+                                kernel,
+                                auc_samples,
+                                precision_k)
+        results[kernel_name] = auc
+        print("[{}:{}] {} - AUC: {:.2f}".
+              format(base_dataset.base_path, index, kernel_name, auc))
 
     return results
 
@@ -132,40 +133,40 @@ def calculate_results_summary(kernel_names, results):
         auc_min = 1.0
         auc_max = 0.0
         auc_sum = 0.0
-        prc_min = 1.0
-        prc_max = 0.0
-        prc_sum = 0.0
+        # prc_min = 1.0
+        # prc_max = 0.0
+        # prc_sum = 0.0
 
         for i in range(1, len(results)):
-            auc, prc = results[i][kernel_name]
+            auc = results[i][kernel_name]
             auc_min = min(auc, auc_min)
-            prc_min = min(prc, prc_min)
+            # prc_min = min(prc, prc_min)
             auc_max = max(auc, auc_max)
-            prc_max = max(prc, prc_max)
+            # prc_max = max(prc, prc_max)
             auc_sum += auc
-            prc_sum += prc
+            # prc_sum += prc
 
         auc_avg = auc_sum / ds_count
-        prc_avg = prc_sum / ds_count
+        # prc_avg = prc_sum / ds_count
 
         auc_ssq = 0.0
-        prc_ssq = 0.0
+        # prc_ssq = 0.0
 
         for i in range(1, len(results)):
-            auc, prc = results[i][kernel_name]
+            auc = results[i][kernel_name]
             auc_ssq += (auc - auc_avg) * (auc - auc_avg)
-            prc_ssq += (prc - prc_avg) * (prc - prc_avg)
+            # prc_ssq += (prc - prc_avg) * (prc - prc_avg)
 
         auc_ssq = auc_ssq / ds_count
-        prc_ssq = prc_ssq / ds_count
+        # prc_ssq = prc_ssq / ds_count
 
         auc_sdv = math.sqrt(auc_ssq)
-        prc_sdv = math.sqrt(prc_ssq)
+        # prc_sdv = math.sqrt(prc_ssq)
 
         results[0][kernel_name] = {"auc": {"min": auc_min, "max": auc_max,
-                                           "mean": auc_avg, "sd": auc_sdv},
-                                   "prc": {"min": prc_min, "max": prc_max,
-                                           "mean": prc_avg, "sd": prc_sdv}}
+                                           "mean": auc_avg, "sd": auc_sdv}}
+        #                           "prc": {"min": prc_min, "max": prc_max,
+        #                                   "mean": prc_avg, "sd": prc_sdv}}
 
 
 def write_results(filepath, results):
