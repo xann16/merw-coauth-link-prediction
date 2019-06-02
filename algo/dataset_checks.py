@@ -69,11 +69,11 @@ def has_no_loops_el(edge_list):
 
 def has_no_loops(data, mode):
     if mode == 'edge_list':
-        return has_no_loops(data)
+        return has_no_loops_el(data)
     elif mode == 'adjacency_matrix_d':
-        return has_no_loops(data)
+        return has_no_loops_d(data)
     else:
-        return has_no_loops(data)
+        return has_no_loops_s(data)
 
 
 # WHOLE GRAPH (BOTH TEST AND TRAINING EDGES) IS CONNECTED
