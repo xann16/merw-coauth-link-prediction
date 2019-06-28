@@ -209,13 +209,15 @@ def compute_basic_simrank(graph, alpha, precision=1e-5, maxiter=20):
     for iteration in range(maxiter):
         for y in range(n):
             S[y, y] = 1.0
-            for x in range(y):
-                S[x, y] = 0.0
-                for a in graph[x]:
-                    for b in graph[y]:
-                        S[x, y] += R[a, b]
-                S[x, y] *= alpha / (len(graph[x])*len(graph[y]))
-                S[y, x] = S[x, y]
+            if len(graph[y])>0:
+                for x in range(y):
+                    S[x, y] = 0.0
+                    if len(graph[x])>0:
+                        for a in graph[x]:
+                            for b in graph[y]:
+                                S[x, y] += R[a, b]
+                        S[x, y] *= alpha / (len(graph[x])*len(graph[y]))
+                    S[y, x] = S[x, y]
         t = R
         R = S
         S = t
@@ -235,7 +237,7 @@ def compute_merw_simrank_ofmatrix(matrix, alpha, precision=1e-5, maxiter=20, met
         for y in range(n):
             S[y, y] = 1.0
             for x in range(y):
-                #if denom[x][y] != 0:   # To mmoże nie zachodzić, jeśli graf nie jest spójny
+                if denom[x][y] != 0:   # To mmoże nie zachodzić, jeśli graf nie jest spójny
                     S[x, y] = 0.0
                     for a in graph[x]:
                         for b in graph[y]:

@@ -105,7 +105,7 @@ def __experiment_plain():
 
 
 def test_dataset_symmetry(data_set, set_no=1):
-    data = dataset.DataSet('../datasets/', 'gr-qc', data_set)
+    data = dataset.DataSet('../datasets/', 'math.FA', data_set)
     matrix = sparse.csc_matrix(
         data.get_training_set(mode='adjacency_matrix_lil', ds_index=set_no), dtype='d')
     print('DATASET ', data_set)
@@ -116,12 +116,13 @@ def test_dataset_symmetry(data_set, set_no=1):
     print(' OK')
 
 
-def __experiment_01(data_set, skipSimRank=False, set_no=1, a=0.5, aucn=2000, simrank_iter=15):
-    data = dataset.DataSet('../datasets/', 'gr-qc', data_set)
+def __experiment_01(data_set, skipSimRank=False, set_no=1, a=0.5, aucn=2000, simrank_iter=15, category='math.GN'):
+    print('Kategoria: ',category)
+    data = dataset.DataSet('../datasets/', category, data_set)
     matrix = sparse.csc_matrix(
         data.get_training_set(mode='adjacency_matrix_lil', ds_index=set_no), dtype='d')
-    training = metrics.get_edges_set(data.get_training_set())
-    test = metrics.get_edges_set(data.get_test_edges())
+    training = data.get_training_set() #metrics.get_edges_set(data.get_training_set())
+    test = data.get_test_edges() #metrics.get_edges_set(data.get_test_edges())
 
     print('Zestaw',set_no,' N=', data.vx_count)
     print('Obliczanie: macierzy przejścia MERW...', end=' ')
@@ -179,4 +180,8 @@ if __name__ == '__main__':  # Odrobina testów
         #test_dataset_symmetry('basic-test', set_no=i)
         #__experiment_01('basic-test', skipSimRank=True, set_no=i, aucn=5000)
     #__test_mat_merw()
-    __experiment_01('basic-test', aucn=7000)
+    __experiment_01('eg1k_chr_frm', aucn=1000)
+    __experiment_01('eg1k_chr_prc', aucn=1000)
+    __experiment_01('eg1k_rnd_kcv', aucn=1000)
+    __experiment_01('eg1k_chr_prc', aucn=1000, category='math.FA')
+
