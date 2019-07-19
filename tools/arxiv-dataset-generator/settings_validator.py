@@ -103,6 +103,7 @@ def validate_chrono_from_date_in_period(entry):
 SPLIT_METHOD_VALIDATORS = {"random": validate_random_split,
                            "k-cross-random": validate_k_cross_random_split,
                            "chrono-perc": validate_chrono_perc_split,
+                           "chrono-perc-old": validate_chrono_perc_split,
                            "chrono-from": validate_chrono_from_split}
 
 

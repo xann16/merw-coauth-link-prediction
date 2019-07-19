@@ -160,7 +160,7 @@ def _inv(x, y):
 def compute_merw_matrix(A, method=power_method):
     n = A.get_shape()[0]
     evector, evalue, iter = method(A)
-    print('({} itr.)'.format(iter), end='')
+    #print('({} itr.)'.format(iter), end='')
     mat1 = smat.diags([evector], [0], shape=(n, n), format='csc')
     mat2 = smat.diags([[_inv(v, evalue) for v in evector]],  # Coś jakby odwrotność macierzy diagonalnej
                       [0], shape=(n, n), format='csc')
@@ -268,3 +268,8 @@ def compute_P_distance(P, alpha=0.8):
     D = smat.identity(P.get_shape()[0], format='csc')
     D -= P * alpha
     return alg.inv(D)
+
+
+def compute_exp_P_distance(P, alpha=0.8):
+    return alg.expm(P * alpha)
+

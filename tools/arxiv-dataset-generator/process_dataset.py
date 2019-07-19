@@ -7,13 +7,17 @@ import dsgen_utils as util
 import import_dataset as dsimp
 
 
-def get_edges_for_random(category, cache_path, t_from, t_to):
+def get_edges_for_random(category, cache_path, t_from, t_to, t_mid):
     return parser.load_edge_list(category, cache_path, t_from, t_to)
 
 
-def get_edges_for_chrono(category, cache_path, t_from, t_to):
+def get_edges_for_chrono(category, cache_path, t_from, t_to, t_mid):
     return parser.load_edge_list(category, cache_path, t_from, t_to,
                                  include_ts=True)
+
+
+def get_edges_for_chrono_from(category, cache_path, t_from, t_to, t_mid):
+    return parser.load_edge_list_not_to_new_nodes(category, cache_path, t_from, t_mid, t_to)
 
 
 def prepare_random_datesets(edges, settings, vx_count, edge_count, base_path):
@@ -152,8 +156,12 @@ SPLIT_METHOD_FUNCS = {"random":
                       (get_edges_for_chrono, preproc.preprocess_chrono_graph,
                        prepare_chrono_perc_dataset),
                       "chrono-from":
+                      (get_edges_for_chrono_from, preproc.preprocess_chrono_graph,
+                       prepare_chrono_from_dataset),
+                      "chrono-perc-old":
                       (get_edges_for_chrono, preproc.preprocess_chrono_graph,
-                       prepare_chrono_from_dataset)}
+                       prepare_chrono_perc_dataset)
+                      }
 
 
 def process_dataset(category, settings, base_path, import_src, import_fmt):
@@ -174,9 +182,12 @@ def process_dataset(category, settings, base_path, import_src, import_fmt):
         cache_path = path.join(base_path, '.arxiv-cache', category)
         t_from, t_to = util.parse_period(settings["period"])
         arxiv.update_cache(category, cache_path, t_from, t_to)
+        t_mid = t_to
+        if settings["split_method"] == "chrono-from":
+            t_mid = util.parse_datetime(settings["test_from"])
         # LOAD EDGE LIST
         vx_count, edges = \
-            SPLIT_METHOD_FUNCS[sm][0](category, cache_path, t_from, t_to)
+            SPLIT_METHOD_FUNCS[sm][0](category, cache_path, t_from, t_to, t_mid)
     else:
         src_path = path.join(base_path, '.ext-cache', import_src)
         # LOAD EDGE LIST

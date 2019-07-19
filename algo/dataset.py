@@ -84,6 +84,18 @@ def basic_load_test_set(base_path, name, ds_index, _, format_type):
     return FORMAT_TO_LOADER[format_type](filepath)
 
 
+def experience_load_test_set(base_path, name, ds_index, _, format_type):
+    if format_type not in FORMAT_TO_LOADER:
+        raise BaseException('Unsupported training set format type.')
+    testpath = get_filepath(base_path, name, ds_index, 'test')
+    trainpath = get_filepath(base_path, name, ds_index, 'train')
+    train_nodes = set()
+    for v1, v2 in FORMAT_TO_LOADER[format_type](trainpath):
+        train_nodes.add(v1)
+        train_nodes.add(v2)
+    return [(v1,v2) for v1,v2 in FORMAT_TO_LOADER[format_type](testpath) if v1 in train_nodes and v2 in train_nodes]
+
+
 def k_cross_load_training_set(base_path, name, ds_index, ds_count,
                               format_type):
     if format_type not in FORMAT_TO_LOADER:
@@ -110,7 +122,9 @@ SPLIT_METHOD_TO_LOADERS = {'random': (basic_load_training_set,
                            'chrono-perc': (basic_load_training_set,
                                            basic_load_test_set),
                            'chrono-from': (basic_load_training_set,
-                                           basic_load_test_set)}
+                                           basic_load_test_set),
+                           'chrono-perc-old': (basic_load_training_set,
+                                               experience_load_test_set)}
 
 
 class DataSet:
