@@ -17,10 +17,10 @@
             "period":
             {
                 "from": "1990-01-01T00:00:00Z",
-                "to": "2017-12-31T00:00:00Z"
+                "to": "2018-12-31T00:00:00Z"
             },
             "split_method": "chrono-from",
-            "test_from": "2016-01-01T00:00:00Z"
+            "test_from": "2009-11-01T00:00:00Z"
         },
         {
             "name": "eg1k_rnd_std",

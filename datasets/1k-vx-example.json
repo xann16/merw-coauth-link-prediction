@@ -17,10 +17,20 @@
             "period":
             {
                 "from": "1993-01-01T00:00:00Z",
-                "to": "1996-08-06T00:00:00Z"
+                "to": "1997-08-06T00:00:00Z"
             },
             "split_method": "chrono-from",
             "test_from": "1996-01-01T00:00:00Z"
+        },
+        {
+            "name": "eg1k_chr_frm1995",
+            "period":
+            {
+                "from": "1994-01-01T00:00:00Z",
+                "to": "1998-08-06T00:00:00Z"
+            },
+            "split_method": "chrono-from",
+            "test_from": "1997-01-01T00:00:00Z"
         },
         {
             "name": "eg1k_rnd_std",

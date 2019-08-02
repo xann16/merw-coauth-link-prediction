@@ -2,46 +2,47 @@
     "category": "math.FA",
     "datasets":
     [
-         {
-            "name": "eg1k_chr_10prc",
+        {
+            "name": "chrono_94_09_10",
             "period":
             {
                 "from": "1994-01-01T00:00:00Z",
-                "to": "2009-08-06T00:00:00Z"
+                "to": "2010-12-31T00:00:00Z"
             },
-            "split_method": "chrono-perc",
-            "test_perc": 10
+            "split_method": "chrono-from",
+            "test_from": "2008-11-01T00:00:00Z"
         },
         {
-            "name": "eg1k_chr_5prc",
+            "name": "chrono_96_08_11",
             "period":
             {
-                "from": "1994-01-01T00:00:00Z",
-                "to": "2009-08-06T00:00:00Z"
+                "from": "1996-01-01T00:00:00Z",
+                "to": "2011-12-31T00:00:00Z"
             },
-            "split_method": "chrono-perc",
-            "test_perc": 5
+            "split_method": "chrono-from",
+            "test_from": "2008-04-01T00:00:00Z"
         },
         {
-            "name": "eg1k_rnd_std",
+            "name": "chrono_96_09_11",
+            "period":
+            {
+                "from": "1996-01-01T00:00:00Z",
+                "to": "2011-12-31T00:00:00Z"
+            },
+            "split_method": "chrono-from",
+            "test_from": "2008-11-01T00:00:00Z"
+        },
+
+        {
+            "name": "random",
             "period":
             {
                 "from": "1994-01-01T00:00:00Z",
                 "to": "2009-08-06T00:00:00Z"
             },
             "split_method": "random",
-            "test_perc": 10,
+            "test_perc": 15,
             "series_count": 10
-        },
-        {
-            "name": "eg1k_rnd_kcv",
-            "period":
-            {
-                "from": "1994-01-01T00:00:00Z",
-                "to": "2004-08-06T00:00:00Z"
-            },
-            "split_method": "k-cross-random",
-            "k_subset_count": 10
         }
     ]
 }

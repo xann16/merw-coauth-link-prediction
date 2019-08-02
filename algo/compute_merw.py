@@ -126,7 +126,7 @@ def power_method(A, precision=1e-11):
     v0 = num.array([random.random()+.1 for i in range(n)])
     eps = 1
     iter = 0
-    while iter < 20 or eps > precision:
+    while iter < 100 and eps > precision or iter < 20:
         v1 = v0*A
         iter += 1
         eval = 0
