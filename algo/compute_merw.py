@@ -45,68 +45,10 @@ def matrix_to_graph(A):
                 graph[col].append(row)
     return graph
 
-
-def __dfs(graph, v, visited):
-    for w in graph[v]:
-        if visited[w] == 0:
-            visited[w] = visited[v]
-            __dfs(graph, w, visited)
-
-
-def extract_connected_component(graph, vertex):  # Być może zbędna funkcja
-    n = len(graph)
-    member = [0 for v in graph]
-    member[vertex] = 1
-    __dfs(graph, vertex, member)
-    number = [0 for v in graph]
-    offset = 0
-    j = 0
-    component = []
-    for i in range(n):
-        if member[i]:
-            number[i] = i - offset
-            component.append(graph[i])
-        else:
-            number[i] = -1
-            offset -= 1
-    for v in component:
-        for i in range(len(v)):
-            v[i] = number[v[i]]
-    return component
-
-
-def get_all_components(graph):
-    n = len(graph)
-    member = [0 for v in graph]
-    vertex = 0
-    comp_id = 1
-    while vertex < n and member[vertex] == 0:
-        member[vertex] = comp_id
-        comp_id += 1
-        __dfs(graph, vertex, member)
-        while vertex < n and member[vertex] > 0:
-            vertex += 1
-    components = []
-    number = [0 for v in graph]
-    index = [0 for c in range(1, comp_id)]
-    for i in range(n):
-        comp = member[i]-1
-        if index[comp] == 0:
-            components.append([graph[i]])
-        else:
-            components[comp].append(graph[i])
-        number[i] = index[comp]
-        index[comp] += 1
-    for component in components:
-        for v in component:
-            for i in range(len(v)):
-                v[i] = number[v[i]]
-    return components
-
 # Obliczanie MERW i SimRanków
 
 
-def compute_merw(A): # Archaiczne liczenie MERW
+def compute_merw(A):  # Archaiczne liczenie MERW
     n = A.get_shape()[0]
     w, v = alg.eigsh(A, 1, )  # Macierz jest symetryczna
     evalue = w[0]
@@ -176,7 +118,7 @@ def compute_grw(A):  # Wyznacza rozkład prawdopodobieństwa i rozkład stacjona
     return P, [x.real * inorm for x in stationary[:, 0]]
 
 
-def compute_merw_simrank(graph, alpha, precision=1e-5, maxiter=100):
+def merw_simrank(graph, alpha, precision=1e-5, maxiter=100):
     n = len(graph)
     R = num.identity(n)
     P, v, val, sdist = compute_merw_matrix(graph_to_matrix(graph))
@@ -202,7 +144,29 @@ def compute_merw_simrank(graph, alpha, precision=1e-5, maxiter=100):
     return R, algnorm.norm(R - S)
 
 
-def compute_basic_simrank(graph, alpha, precision=1e-5, maxiter=20):
+def general_simrank(graph, transm, alpha=0.5, iterations=8):
+    n = len(graph)
+    R = num.identity(n)
+    S = num.zeros((n, n))
+    for _ in range(iterations):
+        for y in range(n):
+            S[y, y] = 1.0
+            if len(graph[y]) > 0:
+                for x in range(y):  # x < y
+                    S[x, y] = 0.0
+                    if len(graph[x]) > 0:
+                        for a in graph[x]:
+                            for b in graph[y]:
+                                S[x, y] += R[a, b] * transm[x, a] * transm[y, b]
+                    S[x, y] *= alpha
+                    S[y, x] = S[x, y]
+        t = R
+        R = S
+        S = t
+    return R, algnorm.norm(R - S)
+
+
+def basic_simrank(graph, alpha, precision=1e-5, maxiter=20):
     n = len(graph)
     R = num.identity(n)
     S = num.zeros((n, n))
@@ -224,7 +188,7 @@ def compute_basic_simrank(graph, alpha, precision=1e-5, maxiter=20):
     return R, algnorm.norm(R - S)
 
 
-def compute_merw_simrank_ofmatrix(matrix, alpha, precision=1e-5, maxiter=20, method=power_method):
+def merw_simrank_ofmatrix(matrix, alpha, precision=1e-5, maxiter=20, method=power_method):
     graph = matrix_to_graph(matrix)
     n = len(graph)
     P, v, val, sdist = compute_merw_matrix(matrix, method=method)
@@ -247,6 +211,7 @@ def compute_merw_simrank_ofmatrix(matrix, alpha, precision=1e-5, maxiter=20, met
         t = R
         R = S
         S = t
+    del t, P, v, val, sdist
     return R, algnorm.norm(R - S)
 
 
@@ -264,12 +229,12 @@ def compute_P_distance_iterative(P, alpha=0.8, maxiter=100, precision=1e-6):  # 
     return result, eps
 
 
-def compute_P_distance(P, alpha=0.8):
+def P_distance(P, alpha=0.8):
     D = smat.identity(P.get_shape()[0], format='csc')
     D -= P * alpha
     return alg.inv(D)
 
 
-def compute_exp_P_distance(P, alpha=0.8):
+def exp_P_distance(P, alpha=0.8):
     return alg.expm(P * alpha)
 
