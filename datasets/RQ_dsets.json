@@ -1,0 +1,48 @@
+{
+    "category": "gr-qc",
+    "datasets":
+    [
+        {
+            "name": "RQ1",
+            "period":
+            {
+                "from": "1993-01-01T00:00:00Z",
+                "to": "1997-09-30T00:00:00Z"
+            },
+            "split_method": "chrono-from",
+            "test_from": "1996-07-01T00:00:00Z"
+        },
+        {
+            "name": "RQ2",
+            "period":
+            {
+                "from": "1996-11-01T00:00:00Z",
+                "to": "2000-11-01T00:00:00Z"
+            },
+            "split_method": "chrono-from",
+            "test_from": "1998-12-01T00:00:00Z"
+        },
+        {
+            "name": "RQR1",
+            "period":
+            {
+                "from": "1993-01-01T00:00:00Z",
+                "to": "1996-08-06T00:00:00Z"
+            },
+            "split_method": "random",
+            "test_perc": 10,
+            "series_count": 5
+        },
+        {
+            "name": "RQR2",
+            "period":
+            {
+                "from": "1993-01-01T00:00:00Z",
+                "to": "1996-08-06T00:00:00Z"
+            },
+            "split_method": "random",
+            "test_perc": 20,
+            "series_count": 5
+        }
+    ]
+}

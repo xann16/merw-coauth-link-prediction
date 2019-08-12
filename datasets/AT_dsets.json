@@ -1,0 +1,48 @@
+{
+    "category": "math.AT",
+    "datasets":
+    [
+        {
+            "name": "AT1",
+            "period":
+            {
+                "from": "1995-01-01T00:00:00Z",
+                "to": "2013-12-31T00:00:00Z"
+            },
+            "split_method": "chrono-from",
+            "test_from": "2011-01-01T00:00:00Z"
+        },
+        {
+            "name": "AT2",
+            "period":
+            {
+                "from": "2001-01-01T00:00:00Z",
+                "to": "2014-12-31T00:00:00Z"
+            },
+            "split_method": "chrono-from",
+            "test_from": "2012-01-01T00:00:00Z"
+        },
+        {
+            "name": "ATR1",
+            "period":
+            {
+                "from": "2004-09-01T00:00:00Z",
+                "to": "2012-12-31T00:00:00Z"
+            },
+            "split_method": "random",
+            "test_perc": 10,
+            "series_count": 5
+        },
+        {
+            "name": "ATR2",
+            "period":
+            {
+                "from": "2004-09-01T00:00:00Z",
+                "to": "2012-12-31T00:00:00Z"
+            },
+            "split_method": "random",
+            "test_perc": 20,
+            "series_count": 5
+        }
+    ]
+}
