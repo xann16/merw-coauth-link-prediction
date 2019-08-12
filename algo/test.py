@@ -141,25 +141,13 @@ def graph_stats(graph, degs, size):
     print(" [!] \"New\" edges {}, ({:3.2f}%)".format(added, 50*added/size))
 
 
-DATASETS = [ ('chrono_93_96_97', 'gr-qc', 'RQ1'), ('chrono_95_97_98', 'gr-qc', 'RQ2'),
-                    ('random', 'gr-qc', 'RQR'), ('random20', 'gr-qc', 'RQR2'),
-                    ('chrono_94_09_10', 'math.FA', 'FA1'), ('chrono_96_08_11', 'math.FA','FA2'),
-                    ('chrono_97_09_11', 'math.FA', 'FA3'), ('random', 'math.FA', 'FAR'),
-                    ('chrono_94_10_12', 'math.AT', 'AT1'), ('chrono_00_11_13', 'math.AT', 'AT2'),
-                    ('random', 'math.AT', 'ATR')]
+DATASETS = [ ('gr-qc', 'RQ1'), ('gr-qc', 'RQ2'), ('gr-qc', 'RQR1'), ('gr-qc', 'RQR2'),
+             ('math.FA', 'FA1'), ('math.FA', 'FA2'), ('math.FA', 'FA3'), ('math.FA', 'FAR1'), ('math.FA', 'FAR2'),
+             ('math.AT', 'AT1'), ('math.AT', 'AT2'), ('math.AT', 'ATR1'), ('math.AT', 'ATR2')]
 
-
-def __TeX_datainfo():
-    for dset, cat, name in DATASETS:
-        data = dataset.DataSet('../datasets/', cat, dset)
-        print("\t{:4} & {:4} & {:4} & {:4} \\\\ \\hline".format(name, data.vx_count, data.train_size, data.test_size))
-    print()
 
 def __test_datasets():
-    for dset, cat in [('std_gr-qc', 'import'), ('eg1k_rnd_std','gr-qc'), ('eg1k_chr_frm', 'gr-qc'), ('eg1k_chr_frm1995', 'gr-qc'),
-            ('eg1k_chr_frm', 'math.GN'),  # ('eg1k_chr_prc', 'math.GN'), ('eg1k_rnd_kcv', 'math.GN'),('eg1k_chr_prc', 'gr-qc'),
-            ('chrono_94_09_10', 'math.FA'), ('chrono_96_08_11', 'math.FA'), ('chrono_96_09_11', 'math.FA'),
-            ('eg1k_rnd_std', 'math.FA')]:
+    for dset, cat, _ in DATASETS:
         print("{} > {}".format(cat,dset))
         data = dataset.DataSet('../datasets/', cat, dset)
         for dsi in range(1,data.set_count+1):
@@ -171,77 +159,86 @@ def __test_datasets():
         print()
 
 
-def __experiment_01(data_set, skipSimRank=False, a=0.5, aucn=None, simrank_iter=10):
-    dset, category, name= data_set
-    print('\n"{}" ({})'.format(dset, category))
-    data = dataset.DataSet('../datasets/', category, dset)
-    print("\t{:4} & {:4} & {:4} & {:4} \\\\ \\hline".format(name, data.vx_count, data.train_size, data.test_size))
-    if not aucn:
-        aucn = 4 * data.train_size
+def __experiment_01(data_set, skipSimRank=False, a=0.5, aucn=None, simrank_iter=10,
+                    metric=metrics.auc):
+    category, name = data_set
+    # print('\n"{}" ({})'.format(name, category))
+    data = dataset.DataSet('../datasets/', category, name)
+    #print("\n{:4} & {:4} & {:4} & {:4} &  \\\\ \\hline".format(name, data.vx_count, data.train_size, data.test_size))
+    if aucn is None:
+        aucn = 7 * data.train_size
+    aucPD = aucMEPD = aucPDM = aucMEPDM = aucSR = aucMESR = 0
     for set_no in range(1, data.set_count+1):
         matrix = sparse.csc_matrix(
             data.get_training_set(mode='adjacency_matrix_csc', ds_index=set_no), dtype='d')
-        training = data.get_training_set(ds_index=set_no) #metrics.get_edges_set(data.get_training_set())
-        test = data.get_test_edges(ds_index=set_no) #metrics.get_edges_set(data.get_test_edges())
+        training = set(data.get_training_set(ds_index=set_no)) #metrics.get_edges_set(data.get_training_set())
+        test = set(data.get_test_edges(ds_index=set_no)) #metrics.get_edges_set(data.get_test_edges())
         if data.set_count > 1:
-            print('>> Zestaw', set_no)
-        print('  PD...', end=' ')
-        Pgrw, sd = merw.compute_grw(matrix)
-        p_dist_grw = merw.compute_P_distance(Pgrw, alpha=a)
-        aucPD = metrics.auc(data.vx_count, training, test, p_dist_grw, aucn)
-        print('MEPD...', end=' ')
-        Pmerw, vekt, eval, stat = merw.compute_merw_matrix(matrix)
-        p_dist_merw = merw.compute_P_distance(Pmerw, alpha=a)
-        aucMEPD = metrics.auc(data.vx_count, training, test, p_dist_merw, aucn)
-        print('PDM...', end=' ')
-        ep_dist_grw = merw.compute_P_distance(Pgrw, alpha=a)
-        aucPDM = metrics.auc(data.vx_count, training, test, ep_dist_grw, aucn)
-        print('MEPDM...', end=' ')
-        ep_dist_merw = merw.compute_P_distance(Pmerw, alpha=a)
-        aucMEPDM = metrics.auc(data.vx_count, training, test, ep_dist_merw, aucn)
-        if skipSimRank:
-            endstr=''
+            print(' %> #{}'.format(set_no), end='')
         else:
+            print(' %', end='')
+        print(' PD.', end='', flush=True)
+        Pgrw, sd = merw.compute_grw(matrix)
+        print('.', end='', flush=True)
+        p_dist_grw = merw.P_distance(Pgrw, alpha=a)
+        print('.', end=' ', flush=True)
+        aucPD += metric(data.vx_count, training, test, p_dist_grw, aucn)
+        print('MEPD.', end='', flush=True)
+        Pmerw, vekt, eval, stat = merw.compute_merw_matrix(matrix)
+        print('.', end='', flush=True)
+        p_dist_merw = merw.P_distance(Pmerw, alpha=a)
+        print('.', end=' ', flush=True)
+        aucMEPD += metric(data.vx_count, training, test, p_dist_merw, aucn)
+        print('PDM.', end='', flush=True)
+        ep_dist_grw = merw.exp_P_distance(Pgrw, alpha=a)
+        print('.', end=' ', flush=True)
+        aucPDM += metric(data.vx_count, training, test, ep_dist_grw, aucn)
+        print('MEPDM.', end='', flush=True)
+        ep_dist_merw = merw.exp_P_distance(Pmerw, alpha=a)
+        print('.', end=' ', flush=True)
+        aucMEPDM += metric(data.vx_count, training, test, ep_dist_merw, aucn)
+        if not skipSimRank:
+            print('SR', end='')
             graph = merw.matrix_to_graph(matrix)
-            #print(graph)
-            print('SR...', end=' ')
-            sr, eps = merw.general_simrank(graph, Pgrw, alpha=a, iterations=simrank_iter)
-            aucSR = metrics.auc(data.vx_count, training, test, sr, aucn)
-            print('({}) MESR...'.foramt(eps), end=' ')
-            sr, eps = merw.general_simrank(graph, Pmerw, alpha=a, iterations=simrank_iter)
-            print('({})'.foramt(eps), end='')
-            aucMESR = metrics.auc(data.vx_count, training, test, sr, aucn)
-            endstr = "& {:.3f} & {:.3f}".format(aucSR, aucMESR)
-        print('\n\t{:.3f} & {:.3f} & {:.3f} & {:.3f} {}\\\\ \\hline'.format(aucPD, aucMEPD, aucPDM, aucMEPDM, endstr))
-        del sr, eps, data, endstr, aucPD, aucMEPD, aucPDM, aucMEPDM, aucSR, aucMESR
+            sr, eps = merw.basic_simrank(graph, alpha=a, iterations=simrank_iter)
+            aucSR += metric(data.vx_count, training, test, sr, aucn)
+            print(' ({:.4f}) MESR'.format(eps), end='')
+            sr, eps = merw.merw_simrank(graph, eigenvector=(vekt, eval), alpha=a, iterations=simrank_iter)
+            print(' ({:.4f})'.format(eps))
+            aucMESR += metric(data.vx_count, training, test, sr, aucn)
+    if skipSimRank:
+        endstr = ''
+    else:
+        endstr = "& {:.3f} & {:.3f}".format(aucSR/data.set_count, aucMESR/data.set_count)
+    print('{:4} #& {:.3f} & {:.3f} & {:.3f} & {:.3f} {}\\\\ \\hline'
+          .format(name, aucPD/data.set_count, aucMEPD/data.set_count,
+          aucPDM/data.set_count, aucMEPDM/data.set_count, endstr))
+    if not skipSimRank:
+        del sr, eps, graph
+    del data, endstr, aucPD, aucMEPD, aucPDM, aucMEPDM, aucSR, aucMESR
 
 
-def __experiment_02(data_set, set_no=1, aucn=2000, category='math.GN'):
-    print('Kategoria: ', category)
-    data = dataset.DataSet('../datasets/', category, data_set)
+def __simrank_test(data_set, a=0.5, set_no=1, aucn=None, simrank_iter=[5, 10]):
+    dset, category, name = data_set
+    print('\n"{}" ({}) #{}'.format(dset, category, set_no))
+    data = dataset.DataSet('../datasets/', category, dset)
+    print("\t{:4} & {:4} & {:4} & {:4} \\\\ \\hline".format(name, data.vx_count, data.train_size, data.test_size))
+    if not aucn:
+        aucn = 5 * data.train_size
     matrix = sparse.csc_matrix(
-        data.get_training_set(mode='adjacency_matrix_lil', ds_index=set_no), dtype='d')
-    training = data.get_training_set() #metrics.get_edges_set(data.get_training_set())
-    test = data.get_test_edges() #metrics.get_edges_set(data.get_test_edges())
-    print('Rozmiar grafu=',data.vx_count)
-
-    print('Obliczanie MERW i GRW...')
-    Pgrw, sd = merw.compute_grw(matrix)
-    Pmerw, vekt, eval, stat = merw.compute_merw_matrix(matrix)
-    for a in [.1, .5, .9]:
-        print('alfa=', a)
-        p_dist = merw.compute_P_distance(Pgrw, alpha=a)
-        print('   Skuteczność PD (AUC {}):'.format(aucn),
-              metrics.auc(data.vx_count, training, test, p_dist, aucn))
-        p_dist = merw.compute_P_distance(Pmerw, alpha=a)
-        print(' Skuteczność MEPD (AUC {}):'.format(aucn),
-              metrics.auc(data.vx_count, training, test, p_dist, aucn))
-        p_dist = merw.compute_P_distance(Pgrw, alpha=a)
-        print('  Skuteczność PDM (AUC {}):'.format(aucn),
-              metrics.auc(data.vx_count, training, test, p_dist, aucn))
-        p_dist = merw.compute_P_distance(Pmerw, alpha=a)
-        print('Skuteczność MEPDM (AUC {}):'.format(aucn),
-              metrics.auc(data.vx_count, training, test, p_dist, aucn))
+        data.get_training_set(mode='adjacency_matrix_csc', ds_index=set_no), dtype='d')
+    training = data.get_training_set(ds_index=set_no)  # metrics.get_edges_set(data.get_training_set())
+    test = data.get_test_edges(ds_index=set_no)  # metrics.get_edges_set(data.get_test_edges())
+    graph = merw.matrix_to_graph(matrix)
+    for iter in simrank_iter:
+        print('{} SR'.format(iter), end='')
+        sr, eps = merw.basic_simrank(graph, a, iterations=iter)
+        aucSR = metrics.auc(data.vx_count, training, test, sr, aucn)
+        print(' ({:.5f}) MESR'.format(eps), end='')
+        sr, eps = merw.merw_simrank(graph, matrix=matrix, alpha=a, iterations=iter)
+        print(' ({:.5f})'.format(eps), end='')
+        aucMESR = metrics.auc(data.vx_count, training, test, sr, aucn)
+        print("\n\t{:2d} & {:.3f} & {:.3f} \\\\".format(iter, aucSR, aucMESR))
 
 
 def __test_mat_merw():
@@ -259,9 +256,24 @@ def __test_mat_merw():
     print(v*A)
     print(val*v)
 
-#__TeX_datainfo()
-#__test_datasets()
-#exit(0)
+
+def __test_auc(data_set, category, exit_at_end=True):
+    print('Testing AUC metric...')
+    data = dataset.DataSet('../datasets/', category, data_set)
+    print("\t{:4} & {:4} & {:4} & {:4}".format(data_set, data.vx_count, data.train_size, data.test_size),
+          end='')
+    matrix = data.get_training_set(mode='adjacency_matrix_csc', ds_index=1)
+    training = data.get_training_set()  # metrics.get_edges_set(data.get_training_set())
+    test = set(data.get_test_edges())
+    Pgrw, sd = merw.compute_grw(matrix)
+    p_dist = merw.P_distance(Pgrw, alpha=.5)
+    for aucn in [2000, 3000, 4000]:
+        print('\n AUC {} :'.format(aucn) ,end='')
+        for _ in range(4):
+            print(' {:.3f} '.format(metrics.auc(data.vx_count, training, test, p_dist, aucn)), end='')
+    print()
+    if exit_at_end:
+        exit(0)
 
 
 if __name__ == '__main__':  # Odrobina testów
@@ -271,10 +283,19 @@ if __name__ == '__main__':  # Odrobina testów
         #test_dataset_symmetry('basic-test', set_no=i)
         #__experiment_01('basic-test', skipSimRank=True, set_no=i, aucn=5000)
     #__test_mat_merw()
-    #__experiment_01('std_gr-qc', aucn=1000, category='import', skipSimRank=True)
-    #__experiment_02('eg1k_rnd_std', aucn=1000, category='gr-qc')
-    #__experiment_02('eg1k_chr_frm', aucn=1000, category='gr-qc')
-    #__experiment_02('chrono_96_08_11', aucn=1000, category='math.FA')
-
+    #__simrank_test(DATASETS[2], set_no=1, simrank_iter=[2, 3, 5, 10])
+    #__simrank_test(DATASETS[7], set_no=2, simrank_iter=[2, 3, 5, 10])
+    #exit(0)
     for data_set in DATASETS:
-        __experiment_01(data_set, skipSimRank=True)
+        __experiment_01(data_set, skipSimRank=False, simrank_iter=3, aucn=4500)
+    print('\n==================')
+    for category, name in DATASETS:
+        data = dataset.DataSet('../datasets/', category, name)
+        print("{:4} #& {:4} & {:4} & {:4} &  \\\\ \\hline".format(name, data.vx_count,
+                                                                  data.train_size, data.test_size))
+    exit(0)
+    for cat, ds in DATASETS[:2]:
+        __test_auc(ds, cat, exit_at_end=False)
+
+
+

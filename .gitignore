@@ -1,6 +1,7 @@
 datasets/.arxiv-cache
 datasets/gr-qc
 datasets/math.*
+datasets/1k-*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

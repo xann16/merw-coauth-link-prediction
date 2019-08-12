@@ -142,7 +142,7 @@ def prepare_chrono_from_dataset(ts_edges, settings, vx_count, edge_count,
     util.write_to_json(metadata, meta_path)
 
     print('Data files for "{}" dataset succesfully created '.format(ds_name) +
-          '({} vertices, {} edges).'.format(vx_count, edge_count))
+          '({} vertices, {} edges, {} test e.).'.format(vx_count, edge_count, edge_count - split_index))
     print('For details, see: {}'.format(meta_path))
 
 
@@ -156,7 +156,7 @@ SPLIT_METHOD_FUNCS = {"random":
                       (get_edges_for_chrono, preproc.preprocess_chrono_graph,
                        prepare_chrono_perc_dataset),
                       "chrono-from":
-                      (get_edges_for_chrono_from, preproc.preprocess_chrono_graph,
+                      (get_edges_for_chrono_from, preproc.preprocess_chrono_graph_oldedges,
                        prepare_chrono_from_dataset),
                       "chrono-perc-old":
                       (get_edges_for_chrono, preproc.preprocess_chrono_graph,

@@ -35,7 +35,7 @@ def matrix_to_graph(A):
     for (row, col) in zip(rows, cols):
         if graph[row].count(col) == 0:
             if len(graph[row]) == 0:
-                graph[row]=[col]
+                graph[row] = [col]
             else:
                 graph[row].append(col)
         if graph[col].count(row) == 0:
@@ -48,6 +48,7 @@ def matrix_to_graph(A):
 # Obliczanie MERW i SimRanków
 
 
+# Oblicza macierz przejścia MERW, wektor własny, wartość własną i rozkład stacjonarny
 def compute_merw(A):  # Archaiczne liczenie MERW
     n = A.get_shape()[0]
     w, v = alg.eigsh(A, 1, )  # Macierz jest symetryczna
@@ -99,6 +100,7 @@ def _inv(x, y):
         return 0.0
 
 
+# Oblicza macierz przejścia MERW, wektor własny, wartość własną i rozkład stacjonarny
 def compute_merw_matrix(A, method=power_method):
     n = A.get_shape()[0]
     evector, evalue, iter = method(A)
@@ -109,74 +111,90 @@ def compute_merw_matrix(A, method=power_method):
     return mat2*A*mat1, evector, evalue, [v*v for v in evector]
 
 
-def compute_grw(A):  # Wyznacza rozkład prawdopodobieństwa i rozkład stacjonarny dla zwykłego błądzenia
+# Wyznacza rozkład prawdopodobieństwa i rozkład stacjonarny dla klasycznego błądzenia losowego
+def compute_grw(A):
     n = A.get_shape()[0]
-    degrees = smat.diags(A.sum(axis=0), [0], shape=(n, n), format='csr').power(-1)
+    degrees = smat.diags(A.sum(axis=0), [0], shape=(n, n), format='csc').power(-1)
     P = degrees * A
     vals, stationary = alg.eigs(P.transpose(), k=1, sigma=0.9999999)
     inorm = 1/num.sum(stationary[:, 0]).real
     return P, [x.real * inorm for x in stationary[:, 0]]
 
 
-def merw_simrank(graph, alpha, precision=1e-5, maxiter=100):
+# Wyznacza miarę MERW-SimRank dla danego grafu.
+# Wartości charakteryzujące MERW można podać jako parametry.
+def merw_simrank(graph, eigenvector=None, matrix=None, alpha=0.5, iterations=100):
     n = len(graph)
-    R = num.identity(n)
-    P, v, val, sdist = compute_merw_matrix(graph_to_matrix(graph))
+    if eigenvector is None:
+        if matrix is None:
+            matrix = graph_to_matrix(graph)
+        _, v, val, _ = compute_merw_matrix(matrix)
+    else:
+        v, val = eigenvector
     R = num.identity(n)
     S = num.zeros((n, n))
     denom = [[v[x] * v[y] for x in range(n)] for y in range(n)]
     alpha = alpha / val / val
-    for iteration in range(maxiter):
-        # S.fill(0)  # S = num.zeros((n, n))
+    for _ in range(iterations):
         for y in range(n):
             S[y, y] = 1.0
             for x in range(y):
-                # if denom[x][y] != 0:   # To mmoże nie zachodzić, jeśli graf nie jest spójny
                 S[x, y] = 0.0
-                for a in graph[x]:
-                    for b in graph[y]:
-                        S[x, y] += R[a, b] / denom[a][b]
-                S[x, y] *= alpha * denom[x][y]
+                if denom[x][y] != 0:   # To mmoże nie zachodzić, jeśli graf nie jest spójny
+                    for a in graph[x]:
+                        for b in graph[y]:
+                            if denom[a][b] != 0:
+                                S[x, y] += R[a, b] / denom[a][b]
+                            #else:
+                            #    print('!', end='', flush=True)
+                    S[x, y] *= alpha * denom[x][y]
+                #else:
+                #    print('!', end='', flush=True)
                 S[y, x] = S[x, y]
+        t = R
+        R = S
+        S = t
+        print(".", end='', flush=True)
+    return R, algnorm.norm(R - S)
+
+
+# Generyczna (mało wydajna) metoda obliczająca miarę SimRank dla dowolnej
+# probabilistycznej macierzy przejścia, wykonując zadaną
+# liczbę iteracji wzoru rekurencyjnego.
+def general_simrank(graph, transm, alpha=0.5, iterations=8):
+    n = len(graph)
+    R = num.identity(n)
+    S = num.zeros((n, n))
+    for _ in range(iterations):
+        print(".", end='', flush=True)
+        for y in range(n):
+            S[y, y] = 1.0
+            if len(graph[y]) > 0:
+                for x in range(y):  # x < y
+                    val = 0.0
+                    for b in graph[y]:
+                        for a in graph[x]:
+                            val += R[a, b] * transm[x, a] * transm[y, b]
+                    S[y, x] = S[x, y] = val * alpha
         t = R
         R = S
         S = t
     return R, algnorm.norm(R - S)
 
 
-def general_simrank(graph, transm, alpha=0.5, iterations=8):
+# Wyznacza klasyczną miarę podobieństwa wierzchołków SimRank, wykonując zadaną
+# liczbę iteracji wzoru rekurencyjnego.
+def basic_simrank(graph, alpha, iterations=20):
     n = len(graph)
     R = num.identity(n)
     S = num.zeros((n, n))
     for _ in range(iterations):
         for y in range(n):
             S[y, y] = 1.0
-            if len(graph[y]) > 0:
-                for x in range(y):  # x < y
-                    S[x, y] = 0.0
-                    if len(graph[x]) > 0:
-                        for a in graph[x]:
-                            for b in graph[y]:
-                                S[x, y] += R[a, b] * transm[x, a] * transm[y, b]
-                    S[x, y] *= alpha
-                    S[y, x] = S[x, y]
-        t = R
-        R = S
-        S = t
-    return R, algnorm.norm(R - S)
-
-
-def basic_simrank(graph, alpha, precision=1e-5, maxiter=20):
-    n = len(graph)
-    R = num.identity(n)
-    S = num.zeros((n, n))
-    for iteration in range(maxiter):
-        for y in range(n):
-            S[y, y] = 1.0
             if len(graph[y])>0:
                 for x in range(y):
                     S[x, y] = 0.0
-                    if len(graph[x])>0:
+                    if len(graph[x]) > 0:
                         for a in graph[x]:
                             for b in graph[y]:
                                 S[x, y] += R[a, b]
@@ -185,6 +203,7 @@ def basic_simrank(graph, alpha, precision=1e-5, maxiter=20):
         t = R
         R = S
         S = t
+        print(".", end='', flush=True)
     return R, algnorm.norm(R - S)
 
 
@@ -201,32 +220,18 @@ def merw_simrank_ofmatrix(matrix, alpha, precision=1e-5, maxiter=20, method=powe
         for y in range(n):
             S[y, y] = 1.0
             for x in range(y):
-                if denom[x][y] != 0:   # To mmoże nie zachodzić, jeśli graf nie jest spójny
-                    S[x, y] = 0.0
+                S[x, y] = 0.0
+                if denom[x][y] != 0:   # To może nie zachodzić, jeśli graf nie jest spójny
                     for a in graph[x]:
                         for b in graph[y]:
                             S[x, y] += R[a, b] / denom[a][b]
                     S[x, y] *= alpha * denom[x][y]
-                    S[y, x] = S[x, y]
+                S[y, x] = S[x, y]
         t = R
         R = S
         S = t
     del t, P, v, val, sdist
     return R, algnorm.norm(R - S)
-
-
-def compute_P_distance_iterative(P, alpha=0.8, maxiter=100, precision=1e-6):  # Archaiczna i niedokładna
-    if alpha <=0 or alpha>1:
-        raise ValueError()
-    D = powr = P*alpha
-    result = smat.identity(P.get_shape()[0], format='csr') + D
-    for i in range(maxiter):
-        powr *= D
-        result = result + powr
-        eps = alg.norm(powr)
-        if eps < precision:
-            return result, eps
-    return result, eps
 
 
 def P_distance(P, alpha=0.8):

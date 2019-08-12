@@ -19,7 +19,17 @@ def get_basic_edge_list(filepath):
     return edges
 
 
-FORMAT_TO_LOADER = {'basic-edge-list': get_basic_edge_list}
+def get_basic_edge_set(filepath):
+    edges = set()
+    with open(filepath, 'r', encoding='utf-8') as file:
+        for line in file:
+            tokens = line.split("\t", 2)
+            edges.add((int(tokens[0]), int(tokens[1])))
+    return edges
+
+
+FORMAT_TO_LOADER = {'basic-edge-list': get_basic_edge_list,
+                    'basic-dge-set': get_basic_edge_set}
 
 
 def proj_2(_, x):

@@ -21,7 +21,7 @@ def get_score(scores, coords):
 
 def auc_prob(vx_count, train_edges, test_edges, scores, samples):
     score = 0
-    for _ in range(0, samples):
+    for _ in range(samples):
         missing_score = get_score(scores, pick_rnd_missing(test_edges))
         notrain_score = get_score(scores, pick_rnd_notrain(vx_count,
                                                            train_edges,
@@ -88,6 +88,30 @@ def find_min(l):
     return min_pos, min_val
 
 
+def get_absent_edge_list(vx_count, train_edges):
+    alledges = []
+    for i in range(vx_count):
+        for j in range(i):
+            if (j, i) not in train_edges:
+                alledges.append((j, i))
+    return alledges
+
+
+def get_top_predictions2(vx_count, train_edges, scores, count, absent_edges=None):
+    curr_min_val = -1
+    curr_min_pos = 0
+    res = [(0, 0)] * count
+    scs = [-1] * count
+    if absent_edges is None:
+        absent_edges = get_absent_edge_list(vx_count, train_edges)
+    for i, j in absent_edges:
+        if scores[i, j] > curr_min_val:
+            res[curr_min_pos] = (i, j)
+            scs[curr_min_pos] = scores[i, j]
+            curr_min_pos, curr_min_val = find_min(scs)
+    return res
+
+
 def get_top_predictions(vx_count, train_edges, scores, count):
     curr_min_val = -1
     curr_min_pos = 0
@@ -108,8 +132,11 @@ def get_top_predictions(vx_count, train_edges, scores, count):
 
 # Oblicza metrykę Precision (parametry jak dla auc(), oprócz ostatniego)
 # -> L - ilość najlepiej ocenionych krawędzi branych pod uwagę
-def precision(vx_count, train_edges, test_edges, scores, L=30):
-    predictions = get_top_predictions(vx_count, train_edges, scores, L)
+def precision(vx_count, train_edges, test_edges, scores, L=30, absent_edges=None):
+    if absent_edges is None:
+        predictions = get_top_predictions(vx_count, train_edges, scores, L)
+    else:
+        predictions = get_top_predictions2(vx_count, train_edges, scores, L, absent_edges=absent_edges)
     score = 0
     for edge in predictions[:L]:
         if edge in test_edges:

@@ -58,25 +58,26 @@ def load_edge_list(category, cache_path, t_from, t_to, include_ts=False):
 
 
 def load_edge_list_not_to_new_nodes(category, cache_path, t_from, t_mid, t_to):
-    edges = []
+    edges1 = []
+    edges2 = []
     author_ids = {}
     current_id = 0
     y_beg, y_end = util.get_years_range(t_from, t_to)
     for year in range(y_beg, y_end):
         articles = load_articles_from_cache(category, year, cache_path)
         for article in articles:
-            new_author_count = parse_article_entry(edges, author_ids,
+            new_author_count = parse_article_entry(edges1, author_ids,
                                 current_id,
                                 article,
                                 t_from, t_mid,
                                 True, add_authors=True)
             if new_author_count == 0:
-                parse_article_entry(edges, author_ids,
+                parse_article_entry(edges2, author_ids,
                                 current_id,
                                 article,
                                 t_mid, t_to,
                                 True, add_authors=False)
             else:
                 current_id += new_author_count
-    return current_id, edges
+    return current_id, (edges1, edges2)
 

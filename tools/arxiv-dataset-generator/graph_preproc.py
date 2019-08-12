@@ -35,6 +35,15 @@ def extract_maxcc(graph):
     return graph
 
 
+def extract_maxcc_and_add_edges(graph, late_edges):
+    _, labels = connected_components(graph, directed=False)
+    max_label = get_maxcc_label(labels)
+    append_ts_edges(graph, late_edges)
+    graph = graph[:, labels == max_label]
+    graph = graph[labels == max_label]
+    return graph
+
+
 # TESTING OF OUTPUT
 
 def is_square(graph):
@@ -99,6 +108,14 @@ def ts_edges_to_utc_graph(size, ts_edges):
     return graph
 
 
+def append_ts_edges(graph, new_edges):
+    for ts, (v1, v2) in new_edges:
+        utc_ts = calendar.timegm(ts.utctimetuple())
+        if graph[v1, v2] == 0 or utc_ts < graph[v1, v2]:
+            graph[v1, v2] = utc_ts
+            graph[v2, v1] = utc_ts
+
+
 def get_uts_ts(utc_edge):
     return utc_edge[0]
 
@@ -127,4 +144,10 @@ def preprocess_simple_graph(vx_count, edges):
 
 def preprocess_chrono_graph(vx_count, ts_edges):
     graph = extract_maxcc(ts_edges_to_utc_graph(vx_count, ts_edges))
+    return utc_graph_to_chrono_ordered_edge_data(graph)
+
+
+def preprocess_chrono_graph_oldedges(vx_count, ts_edges_tuple):
+    ts_edges, ts_edges2 = ts_edges_tuple
+    graph = extract_maxcc_and_add_edges(ts_edges_to_utc_graph(vx_count, ts_edges), ts_edges2)
     return utc_graph_to_chrono_ordered_edge_data(graph)
