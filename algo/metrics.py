@@ -45,7 +45,7 @@ def is_in_edges_2(edges1, edges2, i, j):
     return (j, i) in edges1 or (j, i) in edges2
 
 
-def auc_total(vx_count, train_edges, test_edges, scores):
+def auc_total0(vx_count, train_edges, test_edges, scores):
     score = 0
     samples = 0
 
@@ -61,6 +61,84 @@ def auc_total(vx_count, train_edges, test_edges, scores):
                 elif missing_score == notrain_score:
                     score += 0.5
                 samples += 1
+    return score / samples
+
+
+def first_not_greater(alist, value):
+    a = 0
+    b = len(alist)
+    while a < b:
+        c = (a + b) // 2  # c <= b
+        if alist[c] > value:
+            a = c + 1
+        else:
+            b = c
+    return b
+
+
+def first_less(alist, value):
+    a = 0
+    b = len(alist)
+    while a < b:
+        c = (a + b) // 2  # a <= c <= b
+        if alist[c] < value:
+            b = c
+        else:
+            a = c + 1
+    return a
+
+
+def prepare_all_edges_list(vx_count, train_edges, test_edges):
+    alledges = []
+    for i in range(vx_count):
+        for j in range(i):
+            if (j, i) not in train_edges and (j, i) not in test_edges:
+                alledges.append((j, i))
+    return alledges
+
+
+# To w praktyce nie działa dość szybko by używać.
+def auc_total_fast(vx_count, train_edges, test_edges, scores):
+    print('+', end='', flush=True)
+    absent_scores = []
+    for i in range(1, vx_count):
+        for j in range(i):
+            if (j, i) not in train_edges and (j, i) not in test_edges:
+                absent_scores.append(scores[j, i])
+    print('+', end='', flush=True)
+    absent_scores.sort(reverse=True)
+    score = 0
+    samples = 0
+    series_length = len(absent_scores)
+    for i, j in test_edges:
+        train_score = scores[i, j]
+        print('\b\b??', end='', flush=True)
+        i0 = first_not_greater(absent_scores, train_score)
+        i1 = first_less(absent_scores, train_score)
+        print('\b\b!!', end='', flush=True)
+        samples += series_length
+        score += series_length - .5*(i0 + i1)
+    return score / samples
+
+
+# Znacznie szybsza metoda obliczania przybliżonego AUC
+def auc_semi_total(vx_count, train_edges, test_edges, scores, count=1000, absent_edges=None):
+    #print('++', end='')
+    test_scores = [scores[i, j] for (i, j) in test_edges]
+    test_scores.sort(reverse=True)
+    score = 0
+    samples = 0
+    if absent_edges is None:
+        absent_edges = prepare_all_edges_list(vx_count, train_edges, test_edges)
+    for ct in range(count):
+        i, j = random.choice(absent_edges)
+        notrain_score = scores[i, j]
+        #print('\b\b{:2}'.format(ct), end='', flush=True)
+        i0 = first_not_greater(test_scores, notrain_score)
+        i1 = first_less(test_scores, notrain_score)
+        samples += len(test_edges)
+        score += .5*(i0 + i1)
+    #print('\b\b', end='')
     return score / samples
 
 
